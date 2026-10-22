@@ -20,6 +20,8 @@ ENV/
 *.sqlite3
 *.duckdb
 *.duckdb.wal
+*.parquet
+parquet/
 
 # Large Data & Archives
 *.zip

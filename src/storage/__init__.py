@@ -21,6 +21,7 @@ from src.storage.sqlite_db import (
     save_jev_decision,
     get_jev_history,
 )
+from src.storage.sync import WarehouseSyncBridge
 
 __all__ = [
     "init_db",
@@ -42,4 +43,5 @@ __all__ = [
     "get_last_dispatch_time",
     "save_jev_decision",
     "get_jev_history",
+    "WarehouseSyncBridge",
 ]

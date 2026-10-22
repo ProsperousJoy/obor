@@ -52,6 +52,15 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertIn("water_sources", data)
         self.assertGreaterEqual(len(data["water_sources"]), 8)
 
+    def test_api_warehouse_sync(self):
+        resp_status = self.client.get("/api/warehouse/sync/status")
+        self.assertEqual(resp_status.status_code, 200)
+        self.assertIn("status", resp_status.json())
+
+        resp_sync = self.client.post("/api/warehouse/sync")
+        self.assertEqual(resp_sync.status_code, 200)
+        self.assertEqual(resp_sync.json().get("status"), "success")
+
 
 if __name__ == "__main__":
     unittest.main()

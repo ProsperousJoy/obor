@@ -36,17 +36,27 @@ class Config:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
 
-    # Database (SQLite)
-    DB_PATH: str = os.getenv("DB_PATH", str(PROJECT_ROOT / "wildfire_agent.db"))
+    # Database (SQLite Operational Store)
+    DB_PATH: str = os.getenv(
+        "DB_PATH",
+        str(PROJECT_ROOT / "data" / "operational" / "wildfire.db")
+        if (PROJECT_ROOT / "data" / "operational" / "wildfire.db").exists()
+        else str(PROJECT_ROOT / "wildfire_agent.db")
+    )
 
     # Demo mode — when True, generates simulated fire data
     DEMO_MODE: bool = os.getenv("DEMO_MODE", "false").lower() in ("true", "1", "yes")
 
-    # DuckDB Data Warehouse (Kalimantan / Borneo)
+    # DuckDB Data Warehouse (Analytical OLAP Store)
     WAREHOUSE_DB_PATH: str = os.getenv(
         "WAREHOUSE_DB_PATH",
-        str(PROJECT_ROOT / "data warehouse" / "data-mining-obor" / "data" / "warehouse" / "wildfire.duckdb")
+        str(PROJECT_ROOT / "data" / "warehouse" / "wildfire.duckdb")
+        if (PROJECT_ROOT / "data" / "warehouse" / "wildfire.duckdb").exists()
+        else str(PROJECT_ROOT / "data warehouse" / "data-mining-obor" / "data" / "warehouse" / "wildfire.duckdb")
     )
+
+    # Warehouse Sync Interval (Default: 3600s = 1 hour)
+    WAREHOUSE_SYNC_INTERVAL_SECONDS: int = int(os.getenv("WAREHOUSE_SYNC_INTERVAL_SECONDS", "3600"))
 
     # Borneo Bounding Box (Kalimantan Barat, Tengah, Selatan, Timur, Utara)
     BORNEO_BBOX: dict = {

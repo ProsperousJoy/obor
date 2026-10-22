@@ -16,6 +16,7 @@ from sse_starlette.sse import EventSourceResponse
 from src.config import config
 from src.agents.orchestrator import WildfireAgent
 import src.storage.sqlite_db as db
+from src.storage.sync import WarehouseSyncBridge
 from src.ml.predictor import get_wildfire_predictor
 
 logger = logging.getLogger("wildfire.server")
@@ -53,6 +54,7 @@ async def startup():
     await agent.initialize()
     agent.on_event(_broadcast_event)
     asyncio.create_task(_monitoring_loop())
+    asyncio.create_task(_warehouse_sync_loop())
     logger.info(f"🌐 Server started at http://{config.HOST}:{config.PORT}")
 
 
@@ -61,6 +63,25 @@ async def shutdown():
     """Clean up resources."""
     await agent.close()
     logger.info("Server shut down")
+
+
+async def _warehouse_sync_loop():
+    """Background task to sync operational SQLite records to DuckDB warehouse every hour."""
+    await asyncio.sleep(5)
+    bridge = WarehouseSyncBridge()
+    try:
+        await asyncio.to_thread(bridge.run_sync)
+    except Exception as e:
+        logger.error(f"Initial warehouse sync error: {e}")
+
+    while True:
+        try:
+            await asyncio.sleep(config.WAREHOUSE_SYNC_INTERVAL_SECONDS)
+            await asyncio.to_thread(bridge.run_sync)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Warehouse sync error: {e}", exc_info=True)
 
 
 async def _monitoring_loop():
@@ -253,6 +274,22 @@ async def api_prediction_benchmark():
         return JSONResponse(content=data)
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/warehouse/sync/status")
+async def api_warehouse_sync_status():
+    """Get status and checkpoints of operational-to-warehouse sync."""
+    bridge = WarehouseSyncBridge()
+    status = await asyncio.to_thread(bridge.get_sync_status)
+    return JSONResponse(content=status)
+
+
+@app.post("/api/warehouse/sync")
+async def api_warehouse_trigger_sync():
+    """Trigger an immediate incremental sync from SQLite to DuckDB warehouse."""
+    bridge = WarehouseSyncBridge()
+    result = await asyncio.to_thread(bridge.run_sync)
+    return JSONResponse(content=result)
 
 
 @app.get("/api/status")
