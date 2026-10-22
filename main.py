@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-Wildfire Sentinel — Entry Point
+OBOR — Entry Point
 
-An autonomous AI agent that monitors US wildfire data in real-time,
-applies the Agent Viability Framework (AVF) for governance, makes
-AI-powered risk predictions, and simulates emergency service dispatch.
+Autonomous Multi-Agent Peatland & Wildfire Intelligence System for
+Kalimantan (Borneo), Indonesia. Features Agent Viability Framework (AVF)
+runtime governance, DuckDB geospatial data warehouse, Jev AI supervisor,
+and automated Manggala Agni dispatch dispatching.
 
 Based on: "Governing What You Cannot Observe: Adaptive Runtime
 Governance for Autonomous AI Agents" (Marín & Chaudhary, 2026)
 
 Usage:
-    python main.py              # Normal mode (live NIFC data)
+    python main.py              # Normal mode (live satellite data)
     DEMO_MODE=true python main.py   # Demo mode (simulated data)
 """
 
@@ -48,10 +49,10 @@ def setup_logging():
 
 def main():
     setup_logging()
-    logger = logging.getLogger("wildfire.main")
+    logger = logging.getLogger("obor.main")
 
     logger.info("=" * 60)
-    logger.info("  🔥 WILDFIRE SENTINEL — AVF Monitoring Agent")
+    logger.info("  🔥 OBOR — Autonomous Peatland & Wildfire AI")
     logger.info("=" * 60)
     logger.info("")
 

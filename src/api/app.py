@@ -1,4 +1,4 @@
-"""FastAPI application for Wildfire Sentinel dashboard and real-time SSE stream."""
+"""FastAPI application for OBOR dashboard and real-time SSE stream."""
 
 import asyncio
 import json
@@ -19,11 +19,11 @@ import src.storage.sqlite_db as db
 from src.storage.sync import WarehouseSyncBridge
 from src.ml.predictor import get_wildfire_predictor
 
-logger = logging.getLogger("wildfire.server")
+logger = logging.getLogger("obor.server")
 
 app = FastAPI(
-    title="Wildfire Sentinel — AVF Monitoring Agent",
-    description="Real-time wildfire monitoring with Agent Viability Framework governance",
+    title="OBOR — Autonomous Peatland & Wildfire AI",
+    description="Real-time Kalimantan wildfire monitoring and response system with AVF Governance & DuckDB Warehouse",
     version="2.0.0",
 )
 
@@ -321,7 +321,7 @@ async def stream(request: Request):
             yield {
                 "event": "connected",
                 "data": json.dumps({
-                    "message": "Connected to Wildfire Sentinel",
+                    "message": "Connected to OBOR",
                     "timestamp": time.time(),
                 }),
             }

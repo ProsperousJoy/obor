@@ -1,4 +1,4 @@
-"""API and web server module for Wildfire Sentinel."""
+"""API and web server module for OBOR."""
 
 from src.api.app import app, agent, _broadcast_event
 

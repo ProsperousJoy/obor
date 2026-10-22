@@ -1,4 +1,4 @@
-"""Wildfire Sentinel Agent — Main Multi-Agent Lifecycle Orchestrator."""
+"""OBOR Agent — Main Multi-Agent Lifecycle Orchestrator."""
 
 from datetime import datetime, timezone
 import json
@@ -16,9 +16,9 @@ from src.agents.jev_supervisor import JevSupervisor, JevDecision
 from src.ml import get_wildfire_predictor, WildfirePredictor
 import src.storage.sqlite_db as db
 
-logger = logging.getLogger("wildfire.agent")
+logger = logging.getLogger("obor.agent")
 
-SYSTEM_PROMPT = """You are Wildfire Sentinel, an autonomous AI agent monitoring wildfire incidents across Kalimantan (Borneo), Indonesia in real-time.
+SYSTEM_PROMPT = """You are OBOR, an autonomous AI agent monitoring wildfire and peatland fire incidents across Kalimantan (Borneo), Indonesia in real-time.
 
 Your role:
 1. Analyze current wildfire incidents across Kalimantan provinces (West, Central, South, East, North)
@@ -94,7 +94,7 @@ class WildfireAgent:
     async def initialize(self):
         """Initialize the agent — set up database."""
         await db.init_db()
-        logger.info("🔥 Wildfire Sentinel Agent initialized")
+        logger.info("🔥 OBOR Agent initialized")
 
         warnings = config.validate()
         for w in warnings:
@@ -102,7 +102,7 @@ class WildfireAgent:
 
         await db.log_action(
             "SYSTEM_START", None,
-            "Wildfire Sentinel Agent started",
+            "OBOR Agent started",
             {"demo_mode": config.DEMO_MODE, "has_openai": bool(self._openai)}
         )
 
@@ -637,3 +637,8 @@ class WildfireAgent:
             "last_jev_decision": self.last_jev_decision.to_dict() if self.last_jev_decision else None,
             "recent_dispatches": self.dispatcher.get_recent_dispatches(),
         }
+
+
+# Canonical alias
+OborAgent = WildfireAgent
+

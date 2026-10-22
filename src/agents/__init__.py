@@ -9,7 +9,7 @@ from src.agents.dispatcher import (
     DispatchReport,
     EmergencyDispatcher,
 )
-from src.agents.orchestrator import WildfireAgent
+from src.agents.orchestrator import WildfireAgent, OborAgent
 from src.agents.water_agent import WaterResourceAgent
 from src.agents.impact_agent import ImpactAgent
 from src.agents.resource_agent import ResourceAgent
@@ -28,6 +28,7 @@ __all__ = [
     "DispatchReport",
     "EmergencyDispatcher",
     "WildfireAgent",
+    "OborAgent",
     "WaterResourceAgent",
     "ImpactAgent",
     "ResourceAgent",

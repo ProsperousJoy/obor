@@ -222,7 +222,7 @@ class WildfireDataFetcher:
             logger.info("📡 Ingesting live VIIRS NRT satellite feed for Southeast Asia...")
             response = await self.client.get(
                 config.FIRMS_VIIRS_URL,
-                headers={"User-Agent": "WildfireSentinel-Borneo/1.0"}
+                headers={"User-Agent": "OBOR-Borneo/1.0"}
             )
             response.raise_for_status()
 
@@ -319,7 +319,7 @@ class WildfireDataFetcher:
         for adm_code, city, prov in adm_targets:
             url = f"{config.BMKG_API_BASE_URL}?adm2={adm_code}"
             try:
-                resp = await self.client.get(url, headers={"User-Agent": "WildfireSentinel-Borneo/1.0"}, timeout=6.0)
+                resp = await self.client.get(url, headers={"User-Agent": "OBOR-Borneo/1.0"}, timeout=6.0)
                 if resp.status_code == 200:
                     data = resp.json()
                     cuaca_data = data.get("data", [])

@@ -1,5 +1,5 @@
 """
-Wildfire Sentinel — Multi-Model Training, Hyperparameter Exploration & Overfitting Benchmark
+OBOR — Multi-Model Training, Hyperparameter Exploration & Overfitting Benchmark
 --------------------------------------------------------------------------------------------
 Trains and benchmarks:
   1. LightGBM (Shallow, Balanced, Deep-Regularized)

@@ -25,7 +25,7 @@ logger = logging.getLogger("test")
 
 async def run_low_token_tests():
     print("=" * 60)
-    print("🔥 WILDFIRE SENTINEL — LOW-TOKEN INTEGRATION TEST SUITE")
+    print("🔥 OBOR — LOW-TOKEN INTEGRATION TEST SUITE")
     print("=" * 60)
 
     # 1. Initialize Database

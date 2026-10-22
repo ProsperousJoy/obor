@@ -2,7 +2,7 @@
 test_borneo_low_token.py
 ========================
 Low-Token Verification & End-to-End Simulation Suite for Kalimantan (Borneo)
-Wildfire Sentinel with DuckDB Data Warehouse and Dual Supervisors (AVF + Jev AI).
+OBOR with DuckDB Data Warehouse and Dual Supervisors (AVF + Jev AI).
 
 Strictly adheres to:
   1. Low-token testing constraint (< 600 input tokens per evaluation)
@@ -34,7 +34,7 @@ from src.agents.resource_agent import ResourceAgent
 
 async def main():
     print("=" * 75)
-    print("🌲 BORNEO WILDFIRE SENTINEL — LOW-TOKEN END-TO-END VERIFICATION")
+    print("🌲 OBOR KALIMANTAN — LOW-TOKEN END-TO-END VERIFICATION")
     print("=" * 75)
 
     # ─────────────────────────────────────────────────────────────────────────
