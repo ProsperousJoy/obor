@@ -6,9 +6,24 @@ Queries dim_water_sources from the warehouse, calculates distance, capacity,
 pump feasibility, and recommends the optimal primary and backup water sources.
 """
 
-from typing import Dict, Any, List
+from pathlib import Path
+from typing import Dict, Any, List, Optional
 import math
 import duckdb
+
+
+def _resolve_default_db_path() -> str:
+    local_path = Path(__file__).resolve().parent.parent.parent / "data" / "warehouse" / "wildfire.duckdb"
+    if local_path.exists():
+        return str(local_path)
+    try:
+        from config import config
+        if Path(config.WAREHOUSE_DB_PATH).exists():
+            return config.WAREHOUSE_DB_PATH
+    except Exception:
+        pass
+    return "data/warehouse/wildfire.duckdb"
+
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Computes Great Circle distance between two points in km."""
@@ -24,8 +39,8 @@ class WaterResourceAgent:
     """
     Evaluates nearest water sources, pumping accessibility, and suitability scores.
     """
-    def __init__(self, db_path: str = "data/warehouse/wildfire.duckdb"):
-        self.db_path = db_path
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path or _resolve_default_db_path()
 
     def recommend_water_source(
         self,
@@ -68,8 +83,10 @@ class WaterResourceAgent:
         df["estimated_travel_time_min"] = (df["route_distance_km"] / 25.0 * 60.0).round().astype(int)
 
         # Suitability Components
-        # Distance score (1.0 at 0km, 0.0 at 50km)
-        dist_score = (1.0 - (df["distance_km"] / 50.0)).clip(lower=0.05)
+        # Distance score: smooth exponential decay with 50km characteristic length
+        # Guarantees local sources within 100km strictly dominate distant provinces (e.g. 400km away)
+        import numpy as np
+        dist_score = np.exp(-df["distance_km"] / 50.0)
         
         # Capacity score (scaled logarithmic up to 100,000 m3)
         cap_score = (df["capacity_m3"] / 100000.0).clip(lower=0.1, upper=1.0)
@@ -80,15 +97,15 @@ class WaterResourceAgent:
         # Terrain penalty
         terrain_mult = df["terrain_difficulty"].map({"EASY": 1.0, "MODERATE": 0.85, "DIFFICULT": 0.65}).fillna(0.8)
         
-        # Composite Suitability Score
+        # Composite Suitability Score (Distance heavily weighted to prevent cross-island misrouting)
         df["water_suitability"] = (
-            0.40 * dist_score +
-            0.25 * df["historical_permanence_score"] +
-            0.20 * cap_score +
+            0.50 * dist_score +
+            0.20 * df["historical_permanence_score"] +
+            0.15 * cap_score +
             0.15 * pump_score
         ) * terrain_mult
         
-        df["water_suitability"] = df["water_suitability"].round(2)
+        df["water_suitability"] = df["water_suitability"].round(3)
         df = df.sort_values(by="water_suitability", ascending=False).reset_index(drop=True)
 
         primary = df.iloc[0]

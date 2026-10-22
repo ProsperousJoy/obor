@@ -101,8 +101,26 @@ async def init_db():
 
 async def upsert_fire(fire: dict):
     """Insert or update a fire incident."""
+    await upsert_fires_batch([fire])
+
+
+async def upsert_fires_batch(fires: list[dict]):
+    """Insert or update multiple fire incidents in a single transaction."""
+    if not fires:
+        return
+    rows = [
+        (
+            fire["fire_id"], fire["name"], fire["latitude"], fire["longitude"],
+            fire.get("daily_acres", 0) or 0, fire.get("percent_contained", 0) or 0,
+            fire.get("fire_cause"), fire.get("discovery_time"),
+            fire.get("state"), fire.get("county"),
+            fire.get("alert_level", "MONITOR"), fire.get("last_updated"),
+            json.dumps(fire)
+        )
+        for fire in fires
+    ]
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+        await db.executemany(
             """
             INSERT INTO fire_incidents
                 (fire_id, name, latitude, longitude, daily_acres, percent_contained,
@@ -118,14 +136,7 @@ async def upsert_fire(fire: dict):
                 last_updated=excluded.last_updated,
                 raw_json=excluded.raw_json
             """,
-            (
-                fire["fire_id"], fire["name"], fire["latitude"], fire["longitude"],
-                fire.get("daily_acres", 0), fire.get("percent_contained", 0),
-                fire.get("fire_cause"), fire.get("discovery_time"),
-                fire.get("state"), fire.get("county"),
-                fire.get("alert_level", "MONITOR"), fire.get("last_updated"),
-                json.dumps(fire)
-            )
+            rows
         )
         await db.commit()
 
@@ -142,11 +153,23 @@ async def update_fire_alert_level(fire_id: str, alert_level: str):
 
 async def save_snapshot(fire_id: str, daily_acres: float, percent_contained: float, alert_level: str):
     """Save a point-in-time snapshot for trend tracking."""
+    await save_snapshots_batch([(fire_id, daily_acres, percent_contained, alert_level)])
+
+
+async def save_snapshots_batch(snapshots: list[tuple[str, float, float, str]]):
+    """Save point-in-time snapshots for multiple fires in a single transaction."""
+    if not snapshots:
+        return
+    now = time.time()
+    rows = [
+        (fire_id, now, daily_acres, percent_contained, alert_level)
+        for fire_id, daily_acres, percent_contained, alert_level in snapshots
+    ]
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+        await db.executemany(
             "INSERT INTO fire_snapshots (fire_id, timestamp, daily_acres, percent_contained, alert_level) "
             "VALUES (?, ?, ?, ?, ?)",
-            (fire_id, time.time(), daily_acres, percent_contained, alert_level)
+            rows
         )
         await db.commit()
 

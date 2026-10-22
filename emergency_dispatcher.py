@@ -32,34 +32,34 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * 2.0 * math.asin(math.sqrt(max(0.0, a)))
 
 
-# ─── 12 Manggala Agni Daops Headquarters (from dim_responder_hq) ──────────────
+# ─── 12 Manggala Agni Daops Headquarters (synchronized with dim_responder_hq) ──
 
 MANGGALA_AGNI_DAOPS = [
-    {"hq_id": "HQ-PLK", "name": "Daops Manggala Agni Palangka Raya", "agency": "MANGGALA_AGNI", "province": "Kalimantan Tengah", "regency": "Palangka Raya", "lat": -2.21, "lon": 113.92, "crew": 12, "radio": "VHF-142.500MHz"},
-    {"hq_id": "HQ-KPS", "name": "Daops Manggala Agni Kapuas", "agency": "MANGGALA_AGNI", "province": "Kalimantan Tengah", "regency": "Kapuas", "lat": -2.95, "lon": 114.38, "crew": 10, "radio": "VHF-142.525MHz"},
-    {"hq_id": "HQ-MTW", "name": "Daops Manggala Agni Muara Teweh", "agency": "MANGGALA_AGNI", "province": "Kalimantan Tengah", "regency": "Barito Utara", "lat": -0.95, "lon": 114.89, "crew": 8, "radio": "VHF-142.550MHz"},
-    {"hq_id": "HQ-PTK", "name": "Daops Manggala Agni Pontianak", "agency": "MANGGALA_AGNI", "province": "Kalimantan Barat", "regency": "Pontianak", "lat": -0.02, "lon": 109.34, "crew": 12, "radio": "VHF-142.600MHz"},
-    {"hq_id": "HQ-KTP", "name": "Daops Manggala Agni Ketapang", "agency": "MANGGALA_AGNI", "province": "Kalimantan Barat", "regency": "Ketapang", "lat": -1.82, "lon": 110.15, "crew": 12, "radio": "VHF-142.625MHz"},
-    {"hq_id": "HQ-SKW", "name": "Daops Manggala Agni Singkawang", "agency": "MANGGALA_AGNI", "province": "Kalimantan Barat", "regency": "Singkawang", "lat": 0.90, "lon": 108.98, "crew": 8, "radio": "VHF-142.650MHz"},
-    {"hq_id": "HQ-BJR", "name": "Daops Manggala Agni Banjar", "agency": "MANGGALA_AGNI", "province": "Kalimantan Selatan", "regency": "Banjar", "lat": -3.35, "lon": 114.85, "crew": 10, "radio": "VHF-142.700MHz"},
-    {"hq_id": "HQ-TNL", "name": "Daops Manggala Agni Tanah Laut", "agency": "MANGGALA_AGNI", "province": "Kalimantan Selatan", "regency": "Tanah Laut", "lat": -3.88, "lon": 114.78, "crew": 8, "radio": "VHF-142.725MHz"},
-    {"hq_id": "HQ-PSR", "name": "Daops Manggala Agni Paser", "agency": "MANGGALA_AGNI", "province": "Kalimantan Timur", "regency": "Paser", "lat": -1.85, "lon": 116.10, "crew": 8, "radio": "VHF-142.800MHz"},
-    {"hq_id": "HQ-SMD", "name": "Daops Manggala Agni Samarinda", "agency": "MANGGALA_AGNI", "province": "Kalimantan Timur", "regency": "Samarinda", "lat": -0.50, "lon": 117.15, "crew": 10, "radio": "VHF-142.825MHz"},
-    {"hq_id": "HQ-NNK", "name": "Daops Manggala Agni Nunukan", "agency": "MANGGALA_AGNI", "province": "Kalimantan Utara", "regency": "Nunukan", "lat": 4.13, "lon": 117.65, "crew": 8, "radio": "VHF-142.900MHz"},
-    {"hq_id": "HQ-TRK", "name": "Daops Manggala Agni Tarakan", "agency": "MANGGALA_AGNI", "province": "Kalimantan Utara", "regency": "Tarakan", "lat": 3.32, "lon": 117.60, "crew": 8, "radio": "VHF-142.925MHz"},
+    {"hq_id": "HQ-MA-KT-01", "name": "Daops Manggala Agni Palangka Raya", "agency": "MANGGALA_AGNI", "province": "Kalimantan Tengah", "regency": "Kota Palangka Raya", "lat": -2.2065, "lon": 113.9165, "crew": 18, "radio": "VHF-142.500MHz"},
+    {"hq_id": "HQ-MA-KT-02", "name": "Daops Manggala Agni Kapuas", "agency": "MANGGALA_AGNI", "province": "Kalimantan Tengah", "regency": "Kapuas", "lat": -3.0092, "lon": 114.3876, "crew": 15, "radio": "VHF-142.600MHz"},
+    {"hq_id": "HQ-MA-KT-03", "name": "Daops Manggala Agni Kotawaringin Barat", "agency": "MANGGALA_AGNI", "province": "Kalimantan Tengah", "regency": "Kotawaringin Barat", "lat": -2.6833, "lon": 111.6167, "crew": 12, "radio": "VHF-142.700MHz"},
+    {"hq_id": "HQ-MA-KT-04", "name": "Daops Manggala Agni Muara Teweh", "agency": "MANGGALA_AGNI", "province": "Kalimantan Tengah", "regency": "Barito Utara", "lat": -0.9500, "lon": 114.8833, "crew": 10, "radio": "VHF-142.800MHz"},
+    {"hq_id": "HQ-MA-KB-01", "name": "Daops Manggala Agni Pontianak", "agency": "MANGGALA_AGNI", "province": "Kalimantan Barat", "regency": "Kubu Raya", "lat": -0.0500, "lon": 109.3500, "crew": 18, "radio": "VHF-143.100MHz"},
+    {"hq_id": "HQ-MA-KB-02", "name": "Daops Manggala Agni Ketapang", "agency": "MANGGALA_AGNI", "province": "Kalimantan Barat", "regency": "Ketapang", "lat": -1.8333, "lon": 109.9833, "crew": 14, "radio": "VHF-143.200MHz"},
+    {"hq_id": "HQ-MA-KB-03", "name": "Daops Manggala Agni Sintang", "agency": "MANGGALA_AGNI", "province": "Kalimantan Barat", "regency": "Sintang", "lat": 0.0667, "lon": 111.5000, "crew": 12, "radio": "VHF-143.300MHz"},
+    {"hq_id": "HQ-MA-KS-01", "name": "Daops Manggala Agni Banjar", "agency": "MANGGALA_AGNI", "province": "Kalimantan Selatan", "regency": "Banjar / Banjarbaru", "lat": -3.4500, "lon": 114.8333, "crew": 18, "radio": "VHF-143.500MHz"},
+    {"hq_id": "HQ-MA-KS-02", "name": "Daops Manggala Agni Tanah Laut", "agency": "MANGGALA_AGNI", "province": "Kalimantan Selatan", "regency": "Tanah Laut", "lat": -3.8000, "lon": 114.7833, "crew": 12, "radio": "VHF-143.600MHz"},
+    {"hq_id": "HQ-MA-KI-01", "name": "Daops Manggala Agni Samarinda", "agency": "MANGGALA_AGNI", "province": "Kalimantan Timur", "regency": "Samarinda", "lat": -0.5014, "lon": 117.1536, "crew": 15, "radio": "VHF-144.100MHz"},
+    {"hq_id": "HQ-MA-KI-02", "name": "Daops Manggala Agni Paser", "agency": "MANGGALA_AGNI", "province": "Kalimantan Timur", "regency": "Paser", "lat": -1.8667, "lon": 116.1500, "crew": 10, "radio": "VHF-144.200MHz"},
+    {"hq_id": "HQ-MA-KU-01", "name": "Daops Manggala Agni Bulungan / Tarakan", "agency": "MANGGALA_AGNI", "province": "Kalimantan Utara", "regency": "Bulungan", "lat": 2.8400, "lon": 117.3700, "crew": 12, "radio": "VHF-144.500MHz"},
 ]
 
-# ─── Strategic Water Sources (from dim_water_sources) ─────────────────────────
+# ─── Strategic Water Sources (synchronized with dim_water_sources) ───────────
 
 STRATEGIC_WATER_SOURCES = [
-    {"source_id": "WS-KHY-01", "name": "Sungai Kahayan Intake", "type": "RIVER", "lat": -2.20, "lon": 113.91, "capacity_m3": 150000.0, "province": "Kalimantan Tengah"},
-    {"source_id": "WS-SMB-02", "name": "Danau Sembuluh Pumping Point", "type": "LAKE", "lat": -2.55, "lon": 112.55, "capacity_m3": 850000.0, "province": "Kalimantan Tengah"},
-    {"source_id": "WS-PLP-03", "name": "Embung Gambut Sebangau", "type": "EMBUNG", "lat": -2.45, "lon": 114.05, "capacity_m3": 45000.0, "province": "Kalimantan Tengah"},
-    {"source_id": "WS-KPS-04", "name": "Sungai Kapuas Pontianak", "type": "RIVER", "lat": -0.03, "lon": 109.33, "capacity_m3": 250000.0, "province": "Kalimantan Barat"},
-    {"source_id": "WS-KTP-05", "name": "Rawa Gambut Pematang Gadung", "type": "CANAL", "lat": -1.80, "lon": 110.10, "capacity_m3": 60000.0, "province": "Kalimantan Barat"},
-    {"source_id": "WS-BRT-06", "name": "Sungai Barito Alalak", "type": "RIVER", "lat": -3.28, "lon": 114.58, "capacity_m3": 200000.0, "province": "Kalimantan Selatan"},
-    {"source_id": "WS-MHK-07", "name": "Sungai Mahakam Samarinda", "type": "RIVER", "lat": -0.52, "lon": 117.14, "capacity_m3": 300000.0, "province": "Kalimantan Timur"},
-    {"source_id": "WS-KYN-08", "name": "Sungai Kayan Bulungan", "type": "RIVER", "lat": 2.82, "lon": 117.35, "capacity_m3": 180000.0, "province": "Kalimantan Utara"},
+    {"source_id": "WTR-RIV-03", "name": "Sungai Kahayan", "type": "RIVER", "lat": -2.215, "lon": 113.925, "capacity_m3": 450000.0, "province": "Kalimantan Tengah"},
+    {"source_id": "WTR-LAK-03", "name": "Danau Sembuluh", "type": "LAKE", "lat": -2.580, "lon": 112.550, "capacity_m3": 900000.0, "province": "Kalimantan Tengah"},
+    {"source_id": "WTR-EMB-01", "name": "Embung Gambut Sebangau 01", "type": "EMBUNG", "lat": -2.450, "lon": 114.050, "capacity_m3": 15000.0, "province": "Kalimantan Tengah"},
+    {"source_id": "WTR-RIV-02", "name": "Sungai Kapuas (Hilir)", "type": "RIVER", "lat": -0.060, "lon": 109.320, "capacity_m3": 800000.0, "province": "Kalimantan Barat"},
+    {"source_id": "WTR-CAN-01", "name": "Saluran Primer Induk Eks-PLG", "type": "CANAL", "lat": -2.850, "lon": 114.450, "capacity_m3": 85000.0, "province": "Kalimantan Tengah"},
+    {"source_id": "WTR-RIV-04", "name": "Sungai Barito (Marabahan)", "type": "RIVER", "lat": -2.990, "lon": 114.770, "capacity_m3": 950000.0, "province": "Kalimantan Selatan"},
+    {"source_id": "WTR-RIV-05", "name": "Sungai Mahakam", "type": "RIVER", "lat": -0.450, "lon": 117.020, "capacity_m3": 900000.0, "province": "Kalimantan Timur"},
+    {"source_id": "WTR-RIV-07", "name": "Sungai Kayan", "type": "RIVER", "lat": 2.850, "lon": 117.360, "capacity_m3": 600000.0, "province": "Kalimantan Utara"},
 ]
 
 # ─── Operational Indonesian Firefighting Resource Types ───────────────────────

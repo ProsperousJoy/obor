@@ -7,17 +7,32 @@ Module 9 ingests ground-truth field outcomes, computes error & plan success,
 and logs feedback for adaptive learning and model retraining.
 """
 
-from typing import Dict, Any, List
+from pathlib import Path
+from typing import Dict, Any, List, Optional
 import json
 import duckdb
+
+
+def _resolve_default_db_path() -> str:
+    local_path = Path(__file__).resolve().parent.parent.parent / "data" / "warehouse" / "wildfire.duckdb"
+    if local_path.exists():
+        return str(local_path)
+    try:
+        from config import config
+        if Path(config.WAREHOUSE_DB_PATH).exists():
+            return config.WAREHOUSE_DB_PATH
+    except Exception:
+        pass
+    return "data/warehouse/wildfire.duckdb"
+
 
 class ExecutionAgent:
     """
     Executes or gates plans based on trust levels and authorization policies.
     Logs incident records and feedback loops directly into the warehouse.
     """
-    def __init__(self, db_path: str = "data/warehouse/wildfire.duckdb"):
-        self.db_path = db_path
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path or _resolve_default_db_path()
 
     def execute_plan(
         self,
@@ -93,12 +108,27 @@ class ExecutionAgent:
             steps_str = json.dumps(plan.get("steps", []))
 
             conn.execute("""
-                INSERT OR REPLACE INTO fact_incident_records (
+                INSERT INTO fact_incident_records (
                     incident_id, plan_id, target_datetime, grid_id,
                     fire_probability, fire_intensity, impact_score, priority,
                     recommended_action, assigned_hq_id, assigned_water_id,
                     eta_minutes, steps_json, authorization_level, execution_status
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (incident_id) DO UPDATE SET
+                    plan_id = EXCLUDED.plan_id,
+                    target_datetime = EXCLUDED.target_datetime,
+                    grid_id = EXCLUDED.grid_id,
+                    fire_probability = EXCLUDED.fire_probability,
+                    fire_intensity = EXCLUDED.fire_intensity,
+                    impact_score = EXCLUDED.impact_score,
+                    priority = EXCLUDED.priority,
+                    recommended_action = EXCLUDED.recommended_action,
+                    assigned_hq_id = EXCLUDED.assigned_hq_id,
+                    assigned_water_id = EXCLUDED.assigned_water_id,
+                    eta_minutes = EXCLUDED.eta_minutes,
+                    steps_json = EXCLUDED.steps_json,
+                    authorization_level = EXCLUDED.authorization_level,
+                    execution_status = EXCLUDED.execution_status
             """, [
                 plan["incident_id"], plan["plan_id"], target_dt, grid_id,
                 fire_prob, fire_intensity, impact_score, priority,
@@ -157,12 +187,22 @@ class ExecutionAgent:
 
         try:
             conn.execute("""
-                INSERT OR REPLACE INTO fact_incident_feedback (
+                INSERT INTO fact_incident_feedback (
                     feedback_id, incident_id, real_fire_confirmed,
                     actual_burn_area_ha, actual_response_time_min,
                     actual_water_source_used, prediction_error,
                     plan_success_score, water_accuracy_score, retraining_candidate
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (feedback_id) DO UPDATE SET
+                    incident_id = EXCLUDED.incident_id,
+                    real_fire_confirmed = EXCLUDED.real_fire_confirmed,
+                    actual_burn_area_ha = EXCLUDED.actual_burn_area_ha,
+                    actual_response_time_min = EXCLUDED.actual_response_time_min,
+                    actual_water_source_used = EXCLUDED.actual_water_source_used,
+                    prediction_error = EXCLUDED.prediction_error,
+                    plan_success_score = EXCLUDED.plan_success_score,
+                    water_accuracy_score = EXCLUDED.water_accuracy_score,
+                    retraining_candidate = EXCLUDED.retraining_candidate
             """, [
                 feedback_data["feedback_id"], incident_id, real_fire_confirmed,
                 actual_burn_area_ha, actual_response_time_min, actual_water_source_used,

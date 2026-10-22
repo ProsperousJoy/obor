@@ -6,9 +6,24 @@ Identifies the nearest Daops Manggala Agni / BPBD responder post,
 matches available personnel & equipment to fire priority, and calculates ETA.
 """
 
-from typing import Dict, Any, List
+from pathlib import Path
+from typing import Dict, Any, List, Optional
 import math
 import duckdb
+
+
+def _resolve_default_db_path() -> str:
+    local_path = Path(__file__).resolve().parent.parent.parent / "data" / "warehouse" / "wildfire.duckdb"
+    if local_path.exists():
+        return str(local_path)
+    try:
+        from config import config
+        if Path(config.WAREHOUSE_DB_PATH).exists():
+            return config.WAREHOUSE_DB_PATH
+    except Exception:
+        pass
+    return "data/warehouse/wildfire.duckdb"
+
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Computes Great Circle distance between two points in km."""
@@ -24,8 +39,8 @@ class ResourceAgent:
     """
     Allocates firefighting personnel and equipment from dim_responder_hq.
     """
-    def __init__(self, db_path: str = "data/warehouse/wildfire.duckdb"):
-        self.db_path = db_path
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path or _resolve_default_db_path()
 
     def allocate_resources(
         self,

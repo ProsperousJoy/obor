@@ -144,15 +144,18 @@ class WildfireAgent:
             f"{changes['total_acres']:.0f} total acres"
         )
 
-        # ── Step 2: Store snapshots ──
-        for fire in fires:
-            await db.upsert_fire(fire)
-            await db.save_snapshot(
+        # ── Step 2: Store snapshots in batch (single transaction) ──
+        await db.upsert_fires_batch(fires)
+        snapshots_data = [
+            (
                 fire["fire_id"],
-                fire.get("daily_acres", 0) or 0,
-                fire.get("percent_contained", 0) or 0,
-                fire.get("alert_level", "MONITOR")
+                float(fire.get("daily_acres", 0) or 0),
+                float(fire.get("percent_contained", 0) or 0),
+                str(fire.get("alert_level", "MONITOR"))
             )
+            for fire in fires
+        ]
+        await db.save_snapshots_batch(snapshots_data)
 
         # ── Step 3: Run AVF governance ──
         snapshot = self.governance.evaluate(fires, changes)

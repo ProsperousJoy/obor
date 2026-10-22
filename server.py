@@ -114,6 +114,12 @@ async def dashboard():
     return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
 
 
+@app.get("/health")
+async def health():
+    """Health check endpoint."""
+    return JSONResponse(content={"status": "healthy", "service": "wildfire-monitoring-agent"})
+
+
 # ─── REST API ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/fires")

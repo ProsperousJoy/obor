@@ -529,8 +529,18 @@ class WildfireDataFetcher:
                             conn = duckdb.connect(config.WAREHOUSE_DB_PATH, read_only=False)
                             try:
                                 conn.executemany("""
-                                    INSERT OR REPLACE INTO fact_forecast_3h (adm4_code, forecast_datetime_utc, analysis_datetime_utc, temp_c, humidity_pct, precip_mm, wind_speed_kmh, cloud_cover_pct, weather_code, year, month)
+                                    INSERT INTO fact_forecast_3h (adm4_code, forecast_datetime_utc, analysis_datetime_utc, temp_c, humidity_pct, precip_mm, wind_speed_kmh, cloud_cover_pct, weather_code, year, month)
                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    ON CONFLICT (adm4_code, forecast_datetime_utc) DO UPDATE SET
+                                        analysis_datetime_utc = EXCLUDED.analysis_datetime_utc,
+                                        temp_c = EXCLUDED.temp_c,
+                                        humidity_pct = EXCLUDED.humidity_pct,
+                                        precip_mm = EXCLUDED.precip_mm,
+                                        wind_speed_kmh = EXCLUDED.wind_speed_kmh,
+                                        cloud_cover_pct = EXCLUDED.cloud_cover_pct,
+                                        weather_code = EXCLUDED.weather_code,
+                                        year = EXCLUDED.year,
+                                        month = EXCLUDED.month
                                 """, rows)
                                 logger.info(f"🌤️  Ingested {len(rows)} BMKG live forecast steps for {city} ({prov}) into DuckDB")
                             finally:
