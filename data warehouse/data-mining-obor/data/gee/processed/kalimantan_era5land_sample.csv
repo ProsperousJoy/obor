@@ -1,0 +1,6 @@
+province,city,lat,lon,date,t2m_mean_c,t2m_max_c,dewpoint_mean_c,relative_humidity_mean_pct,total_precip_mm,wind_speed_10m_mean_kmh,soil_moisture_0_7cm_m3m3,status
+Kalimantan Barat,Pontianak,-0.02,109.34,2023-09-01,27.85,32.6,24.39,83.1,0.1,7.46,0.312,SUCCESS
+Kalimantan Tengah,Palangka Raya,-2.21,113.92,2023-09-01,27.65,32.8,21.01,68.7,0.0,9.15,0.17,SUCCESS
+Kalimantan Selatan,Banjarmasin,-3.32,114.59,2023-09-01,27.59,34.3,20.29,67.3,0.0,9.47,0.167,SUCCESS
+Kalimantan Timur,Samarinda,-0.5,117.15,2023-09-01,27.16,31.6,23.1,79.5,3.0,10.5,0.31,SUCCESS
+Kalimantan Utara,Tanjung Selor,2.84,117.37,2023-09-01,26.46,32.4,24.2,88.8,22.6,5.43,0.407,SUCCESS

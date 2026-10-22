@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 Wildfire Sentinel — Kalimantan (Borneo) Multi-Agent AI</title>
+    
+    <!-- SEO & Meta -->
+    <meta name="description" content="Real-time Kalimantan wildfire monitoring and response system powered by DuckDB Data Warehouse, AVF Governance, and TypeSafe Jev AI.">
+    <meta name="theme-color" content="#0a0a0f">
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="glass-header">
+            <div class="header-content">
+                <h1><span class="emoji-logo">🔥</span> Wildfire Sentinel <span class="subtitle">— Kalimantan (Borneo) Multi-Agent Response</span></h1>
+                <div class="status-indicator">
+                    <span class="pulse-dot" id="connection-dot"></span>
+                    <span id="connection-status">Live Monitoring</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Top Stats Bar -->
+        <div class="stats-grid">
+            <div class="stat-card stat-primary">
+                <div class="stat-title">Active Incidents</div>
+                <div class="stat-value" id="stat-active-fires">0</div>
+            </div>
+            <div class="stat-card stat-secondary">
+                <div class="stat-title">Total Area Burning</div>
+                <div class="stat-value" id="stat-total-acres">0 ha</div>
+            </div>
+            <div class="stat-card stat-vi">
+                <div class="stat-title">Viability Index (VI)</div>
+                <div class="stat-value" id="stat-vi">0.00</div>
+            </div>
+            <div class="stat-card stat-warning">
+                <div class="stat-title">Predicted Time to Violation (t*)</div>
+                <div class="stat-value" id="stat-ttv">--</div>
+            </div>
+        </div>
+
+        <!-- Main Grid Layout -->
+        <div class="main-grid">
+            
+            <!-- Left Column (Wider) -->
+            <div class="left-col">
+                <!-- Live Fire Map -->
+                <div class="glass-card map-card">
+                    <div class="card-header">
+                        <div class="header-left">
+                            <h2>Live Fire Map</h2>
+                            <span class="badge badge-monitor">Kalimantan (Borneo)</span>
+                        </div>
+                        <div class="layer-toggles">
+                            <button class="layer-btn active" id="btn-toggle-fires">🔥 Hotspots</button>
+                            <button class="layer-btn active" id="btn-toggle-pred">🔮 Prediksi 24h</button>
+                            <button class="layer-btn active" id="btn-toggle-daops">🚒 Daops Pos</button>
+                            <button class="layer-btn active" id="btn-toggle-water">💧 Sumber Air</button>
+                            <button class="layer-btn" id="btn-toggle-satellite">🛰️ Satelit</button>
+                        </div>
+                    </div>
+                    <div id="fire-map" class="map-container"></div>
+                </div>
+
+                <!-- 24-Hour ML Predictive Risk & Intensity Forecast -->
+                <div class="glass-card table-card" style="margin-bottom: 1.5rem;">
+                    <div class="card-header">
+                        <div class="header-left">
+                            <h2>🔮 24-Hour ML Wildfire Risk Forecast (Kalimantan 2km Grid)</h2>
+                            <span class="badge badge-warning" id="pred-model-badge">XGBoost + LightGBM</span>
+                        </div>
+                        <div class="pred-winner-badge">
+                            <span>🛡️ Overfit Gap: <strong>+0.0482 (&le; 0.05 PASS)</strong></span>
+                        </div>
+                    </div>
+                    <div class="table-container" style="max-height: 240px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Grid Cell ID</th>
+                                    <th>Provinsi</th>
+                                    <th>24h Ignition Risk (Calibrated)</th>
+                                    <th>Tingkat Bahaya</th>
+                                    <th>Estimasi Waktu / ETA</th>
+                                    <th>Predicted FRP (MW)</th>
+                                    <th>Dry Days</th>
+                                    <th>7d Hotspots</th>
+                                </tr>
+                            </thead>
+                            <tbody id="prediction-table-body">
+                                <tr><td colspan="8" style="text-align:center;color:#888;">Memuat prediksi risiko 24 jam...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Active Fires Table -->
+                <div class="glass-card table-card">
+                    <div class="card-header">
+                        <h2>Active Incidents</h2>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Incident Name</th>
+                                    <th>Province / Regency</th>
+                                    <th>Area (Ha / Ac)</th>
+                                    <th>Contained</th>
+                                    <th>Peatland</th>
+                                    <th>Alert Level</th>
+                                    <th>Trend</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fires-table-body">
+                                <!-- Dynamic rows inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column (Narrower) -->
+            <div class="right-col">
+                
+                <!-- Viability Index Panel -->
+                <div class="glass-card vi-card">
+                    <div class="card-header">
+                        <h2>Viability Analysis</h2>
+                    </div>
+                    <div class="vi-gauge-container">
+                        <svg viewBox="0 0 200 120" class="vi-gauge-svg">
+                            <defs>
+                                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#ff3b3b" />
+                                    <stop offset="50%" stop-color="#f5a623" />
+                                    <stop offset="100%" stop-color="#00d97e" />
+                                </linearGradient>
+                            </defs>
+                            <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" />
+                            <path class="gauge-value" id="vi-gauge-path" d="M 20 100 A 80 80 0 0 1 180 100" stroke="url(#gaugeGradient)" />
+                            <text x="100" y="90" text-anchor="middle" class="gauge-text" id="vi-gauge-text">0.00</text>
+                            <text x="100" y="110" text-anchor="middle" class="gauge-subtext">Current VI(t)</text>
+                        </svg>
+                    </div>
+                    <div class="vi-components">
+                        <div class="component">
+                            <div class="comp-label"><span>C1: Safety</span> <span id="val-c1">0.00</span></div>
+                            <div class="progress-bar"><div class="progress-fill" id="bar-c1" style="width: 50%;"></div></div>
+                        </div>
+                        <div class="component">
+                            <div class="comp-label"><span>C2: Fairness</span> <span id="val-c2">0.00</span></div>
+                            <div class="progress-bar"><div class="progress-fill" id="bar-c2" style="width: 50%;"></div></div>
+                        </div>
+                        <div class="component">
+                            <div class="comp-label"><span>C3: Stability</span> <span id="val-c3">0.00</span></div>
+                            <div class="progress-bar"><div class="progress-fill" id="bar-c3" style="width: 50%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jev AI Supervisor Panel -->
+                <div class="glass-card jev-card">
+                    <div class="card-header">
+                        <h2>🧠 Jev AI Supervisor</h2>
+                        <span class="badge" id="jev-status-badge">Connecting...</span>
+                    </div>
+                    <div class="jev-content">
+                        <!-- Threat & Dispatch Probabilities -->
+                        <div class="jev-probabilities">
+                            <div class="jev-prob-item">
+                                <div class="jev-prob-label">
+                                    <span>Immediate Threat</span>
+                                    <span class="jev-prob-val" id="jev-threat-val">0%</span>
+                                </div>
+                                <div class="jev-prob-bar">
+                                    <div class="jev-prob-fill jev-fill-threat" id="jev-threat-bar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div class="jev-prob-item">
+                                <div class="jev-prob-label">
+                                    <span>Dispatch Needed</span>
+                                    <span class="jev-prob-val" id="jev-dispatch-val">0%</span>
+                                </div>
+                                <div class="jev-prob-bar">
+                                    <div class="jev-prob-fill jev-fill-dispatch" id="jev-dispatch-bar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div class="jev-prob-item">
+                                <div class="jev-prob-label">
+                                    <span>AVF Override</span>
+                                    <span class="jev-prob-val" id="jev-override-val">0%</span>
+                                </div>
+                                <div class="jev-prob-bar">
+                                    <div class="jev-prob-fill jev-fill-override" id="jev-override-bar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Response Level & Severity -->
+                        <div class="jev-metrics-row">
+                            <div class="jev-metric-box">
+                                <div class="jev-metric-title">Response Level</div>
+                                <div class="jev-response-level" id="jev-response-level">--</div>
+                                <div class="jev-confidence" id="jev-response-conf">conf: --</div>
+                            </div>
+                            <div class="jev-metric-box">
+                                <div class="jev-metric-title">Severity Score</div>
+                                <div class="jev-severity-score" id="jev-severity-score">--</div>
+                                <div class="jev-confidence" id="jev-severity-conf">conf: --</div>
+                            </div>
+                        </div>
+
+                        <!-- Latency -->
+                        <div class="jev-footer-info">
+                            <span class="jev-latency" id="jev-latency">⏱ --ms</span>
+                            <span class="jev-override-status" id="jev-override-status"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Predictions Panel -->
+                <div class="glass-card ai-predictions-card">
+                    <div class="card-header">
+                        <h2>AI Risk Assessment</h2>
+                    </div>
+                    <div id="predictions-panel" class="predictions-content">
+                        Waiting for AI analysis...
+                    </div>
+                </div>
+
+                <!-- Agent Activity Feed -->
+                <div class="glass-card feed-card">
+                    <div class="card-header">
+                        <h2>Agent Decisions</h2>
+                    </div>
+                    <div class="feed-container" id="activity-feed">
+                        <!-- Dynamic feed items -->
+                    </div>
+                </div>
+
+                <!-- Emergency Dispatch Log -->
+                <div class="glass-card dispatch-card">
+                    <div class="card-header">
+                        <h2>🚒 Manggala Agni & BPBD Dispatch Log</h2>
+                    </div>
+                    <div class="dispatch-container" id="dispatch-log">
+                        <!-- Dynamic dispatch items -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="glass-footer">
+            Powered by Agent Viability Framework &bull; Multi-Sensor Ingestion (NASA FIRMS VIIRS, BMKG Weather, Himawari-9 AHI S3) &bull; DuckDB Data Warehouse &bull; TypeSafe Jev AI Supervisor &bull; SEA x OpenAI Indo Hackathon 2026
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Custom JS -->
+    <script src="/static/app.js"></script>
+</body>
+</html>

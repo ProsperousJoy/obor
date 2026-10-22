@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Secrets and Local Configurations
+.env
+!.env.example
+
+# Database Files
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+*.duckdb.wal
+
+# Large Data & Archives
+*.zip
+*.tar.gz
+*.tar
+*.rar
+*.7z
+*.mp4
+*.avi
+*.mov
+*.nc
+*.DAT
+*.DAT.bz2
+
+# Logs and Scratch
+*.log
+scratch/
+
+# Operating System & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
