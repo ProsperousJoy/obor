@@ -1,7 +1,7 @@
 """Unit tests for WildfirePredictor dual ML models and diurnal cycle."""
 
 import unittest
-from wildfire_predictor import WildfirePredictor
+from src.ml.predictor import WildfirePredictor
 
 
 class TestWildfirePredictor(unittest.TestCase):

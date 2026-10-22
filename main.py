@@ -18,7 +18,7 @@ import logging
 import sys
 import uvicorn
 
-from config import config
+from src.config import config
 
 # ─── Logging Setup ────────────────────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ def main():
 
     # Run the FastAPI server
     uvicorn.run(
-        "server:app",
+        "src.api.app:app",
         host=config.HOST,
         port=config.PORT,
         log_level="info",

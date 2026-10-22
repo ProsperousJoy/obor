@@ -21,17 +21,12 @@ WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
-from config import config
-from data_fetcher import WildfireDataFetcher, assign_grid_id
-from governance import GovernanceEngine
-from emergency_dispatcher import EmergencyDispatcher
-from jev_supervisor import JevSupervisor
-
-# Add warehouse to path after root imports
-WH_DIR = WORKSPACE_ROOT / "data warehouse" / "data-mining-obor"
-if str(WH_DIR) not in sys.path:
-    sys.path.append(str(WH_DIR))
-
+from src.config import config
+from src.data.fetcher import WildfireDataFetcher
+from src.data.spatial import assign_grid_id
+from src.governance.engine import GovernanceEngine
+from src.agents.dispatcher import EmergencyDispatcher
+from src.agents.jev_supervisor import JevSupervisor
 from src.agents.impact_agent import ImpactAgent
 from src.agents.water_agent import WaterResourceAgent
 from src.agents.resource_agent import ResourceAgent

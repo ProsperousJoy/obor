@@ -1,7 +1,8 @@
 """Unit tests for the Governance Engine (Agent Viability Framework)."""
 
 import unittest
-from governance import GovernanceEngine, AlertLevel, GovernanceSnapshot
+from src.governance.engine import GovernanceEngine, GovernanceSnapshot
+from src.governance.alerts import AlertLevel
 
 
 class TestAVFGovernance(unittest.TestCase):

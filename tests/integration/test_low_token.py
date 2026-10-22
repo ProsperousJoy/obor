@@ -14,9 +14,10 @@ if str(_ROOT) not in sys.path:
 import asyncio
 import logging
 import time
-from database import init_db, save_jev_decision, get_jev_history, DB_PATH
-from governance import GovernanceEngine, GovernanceSnapshot, AlertLevel
-from jev_supervisor import JevSupervisor, JevDecision
+from src.storage.sqlite_db import init_db, save_jev_decision, get_jev_history, DB_PATH
+from src.governance.engine import GovernanceEngine, GovernanceSnapshot
+from src.governance.alerts import AlertLevel
+from src.agents.jev_supervisor import JevSupervisor, JevDecision
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("test")

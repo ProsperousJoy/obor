@@ -1,7 +1,7 @@
 """Unit tests for Emergency Dispatcher Daops coordination and persistence."""
 
 import unittest
-from emergency_dispatcher import EmergencyDispatcher, MANGGALA_AGNI_DAOPS, STRATEGIC_WATER_SOURCES
+from src.agents.dispatcher import EmergencyDispatcher, MANGGALA_AGNI_DAOPS, STRATEGIC_WATER_SOURCES
 
 
 class TestEmergencyDispatcher(unittest.TestCase):

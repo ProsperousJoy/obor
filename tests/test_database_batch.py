@@ -2,7 +2,7 @@
 
 import asyncio
 import unittest
-import database as db
+import src.storage.sqlite_db as db
 
 
 class TestDatabaseBatch(unittest.IsolatedAsyncioTestCase):

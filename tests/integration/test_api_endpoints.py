@@ -10,7 +10,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from fastapi.testclient import TestClient
-from server import app
+from src.api.app import app
 
 client = TestClient(app)
 
