@@ -1,11 +1,6 @@
 """Unit tests for WaterResourceAgent distance decay and selection."""
 
 import unittest
-import sys
-import os
-
-# Add warehouse agent path if needed
-sys.path.insert(0, os.path.abspath("data warehouse/data-mining-obor"))
 from src.agents.water_agent import WaterResourceAgent
 
 
