@@ -1,5 +1,6 @@
 /**
  * app.js — Frontend Logic for OBOR
+ * Borneo Field Operations Instrument
  * Handles map rendering, SSE data stream, UI updates, and animations.
  */
 
@@ -48,14 +49,33 @@ const els = {
     jevOverrideStatus:document.getElementById('jev-override-status'),
 };
 
+// ─── Live Clock (WITA / UTC+8) ──────────────────────────────────────────────
+const updateWitaClock = () => {
+    const el = document.getElementById('clock-wita');
+    if (!el) return;
+    const now = new Date();
+    const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+    const wita = new Date(utcMs + 8 * 3600000);
+    const pad = (n) => String(n).padStart(2, '0');
+    el.textContent = `${pad(wita.getHours())}:${pad(wita.getMinutes())}:${pad(wita.getSeconds())} WITA`;
+};
+setInterval(updateWitaClock, 1000);
+updateWitaClock();
+
 // ─── Utilities ──────────────────────────────────────────────────────────────
 const formatNumber = (num) => new Intl.NumberFormat().format(Math.round(num));
 
+const stripEmoji = (str) => {
+    if (!str || typeof str !== 'string') return '';
+    return str.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F100}-\u{1F1FF}\u{1F200}-\u{1F2FF}\u{1F680}-\u{1F6FF}\u{1F004}\u{1F0CF}\u{1F900}-\u{1F9FF}\u{FE00}-\u{FE0F}]/gu, '')
+              .replace(/\s{2,}/g, ' ')
+              .trim();
+};
+
 const timeAgo = (ts) => {
     const now = Date.now();
-    // Handle both epoch seconds and ISO strings
     const then = typeof ts === 'number'
-        ? (ts > 1e12 ? ts : ts * 1000)  // epoch seconds → ms
+        ? (ts > 1e12 ? ts : ts * 1000)
         : new Date(ts).getTime();
     const diffSec = (now - then) / 1000;
     if (diffSec < 60) return 'Just now';
@@ -65,18 +85,27 @@ const timeAgo = (ts) => {
 };
 
 const interpolateColor = (val) => {
-    // val ∈ [-1, +1] → Red(-1) → Yellow(0) → Green(+1)
-    const t = (val + 1) / 2; // normalize to 0..1
+    // val in [-1, +1] -> Flame Red (-1: #C4452F) -> Gold (0: #C99A3E) -> Olive (+1: #8A9A72)
+    const t = Math.max(0, Math.min(1, (val + 1) / 2));
     if (t < 0.5) {
         const p = t / 0.5;
-        return `rgb(255, ${Math.round(59 + p * 107)}, ${Math.round(59 * (1 - p) + 35 * p)})`;
+        // From (196, 69, 47) to (201, 154, 62)
+        const r = Math.round(196 + (201 - 196) * p);
+        const g = Math.round(69 + (154 - 69) * p);
+        const b = Math.round(47 + (62 - 47) * p);
+        return `rgb(${r}, ${g}, ${b})`;
     } else {
         const p = (t - 0.5) / 0.5;
-        return `rgb(${Math.round(245 - p * 245)}, ${Math.round(166 + p * 51)}, ${Math.round(35 + p * 91)})`;
+        // From (201, 154, 62) to (138, 154, 114)
+        const r = Math.round(201 + (138 - 201) * p);
+        const g = Math.round(154 + (154 - 154) * p);
+        const b = Math.round(62 + (114 - 62) * p);
+        return `rgb(${r}, ${g}, ${b})`;
     }
 };
 
 const animateValue = (el, start, end, duration) => {
+    if (!el) return;
     const isFloat = !Number.isInteger(end) && Math.abs(end) < 100;
     let startTime = null;
     const step = (ts) => {
@@ -102,7 +131,7 @@ const playEmergencyAlert = () => {
         osc.frequency.setValueAtTime(880, audioCtx.currentTime);
         osc.frequency.setValueAtTime(660, audioCtx.currentTime + 0.15);
         osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
@@ -113,7 +142,6 @@ const playEmergencyAlert = () => {
     }
 };
 
-// ─── Map ────────────────────────────────────────────────────────────────────
 // ─── Map & Layer Groups ─────────────────────────────────────────────────────
 let fireLayerGroup;
 let daopsLayerGroup;
@@ -127,7 +155,6 @@ const initMap = () => {
     // Centered on Kalimantan / Borneo
     map = L.map('fire-map').setView([-1.5, 114.0], 6);
 
-    // Free, reliable, keyless ESRI Dark Canvas + World Satellite
     darkCanvasLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
         attribution: '&copy; <a href="https://www.esri.com/">Esri</a> &bull; OBOR Kalimantan',
         maxZoom: 16
@@ -144,12 +171,10 @@ const initMap = () => {
         maxZoom: 19
     });
 
-    // Create a special pane for labels so borders & names stay crisp above layers
     map.createPane('labels');
     map.getPane('labels').style.zIndex = 450;
     map.getPane('labels').style.pointerEvents = 'none';
 
-    // Add dark canvas + reference labels by default
     darkCanvasLayer.addTo(map);
     darkLabelsLayer.addTo(map);
 
@@ -174,18 +199,18 @@ const loadDaopsHQs = async () => {
         hqs.forEach(hq => {
             const icon = L.divIcon({
                 className: 'daops-marker-icon',
-                html: '<span>🚒</span>',
-                iconSize: [26, 26],
-                iconAnchor: [13, 13]
+                html: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>',
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
             });
             const marker = L.marker([hq.lat, hq.lon], { icon });
             marker.bindPopup(`
-                <div style="font-family:Inter,sans-serif;min-width:200px;">
-                    <strong style="color:#38bdf8;font-size:13px;">${hq.name}</strong><br>
-                    <span style="color:#aaa;">${hq.province || ''} &bull; ${hq.regency || ''}</span><br><br>
-                    👨‍🚒 Crew on duty: <strong>${hq.crew || 10} firefighters</strong><br>
-                    📻 Radio: <strong>${hq.radio || 'VHF 142.5 MHz'}</strong><br>
-                    🏢 Agency: <strong>${hq.agency || 'MANGGALA AGNI'}</strong>
+                <div style="font-family:'IBM Plex Mono', 'Archivo', monospace;min-width:210px;font-size:11px;color:#E9E2D4;">
+                    <strong style="color:#D95F2B;font-size:12px;letter-spacing:0.04em;">${hq.name}</strong><br>
+                    <span style="color:#948B7E;">${hq.province || ''} &bull; ${hq.regency || ''}</span><br><br>
+                    CREW ON DUTY: <strong>${hq.crew || 10} FIREFIGHTERS</strong><br>
+                    RADIO FREQ: <strong>${hq.radio || 'VHF 142.5 MHz'}</strong><br>
+                    AGENCY: <strong>${hq.agency || 'MANGGALA AGNI'}</strong>
                 </div>
             `);
             daopsLayerGroup.addLayer(marker);
@@ -205,18 +230,18 @@ const loadWaterSources = async () => {
         sources.forEach(w => {
             const icon = L.divIcon({
                 className: 'water-marker-icon',
-                html: '<span>💧</span>',
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
+                html: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 2.7l5.7 5.7a8 8 0 1 1-11.4 0z"/></svg>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
             });
             const marker = L.marker([w.lat, w.lon], { icon });
             marker.bindPopup(`
-                <div style="font-family:Inter,sans-serif;min-width:190px;">
-                    <strong style="color:#34d399;font-size:13px;">${w.name}</strong><br>
-                    <span style="color:#aaa;">${w.province || ''}</span><br><br>
-                    🌊 Type: <strong>${w.type}</strong><br>
-                    📦 Capacity: <strong>${formatNumber(w.capacity_m3 || 0)} m³</strong><br>
-                    ⚙️ Pump Accessible: <strong>Yes</strong>
+                <div style="font-family:'IBM Plex Mono', 'Archivo', monospace;min-width:200px;font-size:11px;color:#E9E2D4;">
+                    <strong style="color:#8A9A72;font-size:12px;letter-spacing:0.04em;">${w.name}</strong><br>
+                    <span style="color:#948B7E;">${w.province || ''}</span><br><br>
+                    TYPE: <strong>${w.type}</strong><br>
+                    CAPACITY: <strong>${formatNumber(w.capacity_m3 || 0)} m³</strong><br>
+                    PUMP ACCESS: <strong>OPERATIONAL</strong>
                 </div>
             `);
             waterLayerGroup.addLayer(marker);
@@ -306,43 +331,45 @@ const loadPredictionsHeatmap = async () => {
         predictionLayerGroup.clearLayers();
 
         features.forEach(feat => {
-            const coords = feat.geometry.coordinates; // [lon, lat]
+            const coords = feat.geometry.coordinates;
             const p = feat.properties;
             const riskPct = (p.calibrated_risk * 100).toFixed(1);
             
-            let color = '#fde047'; // yellow WASPADA
-            let radius = 7;
+            let color = '#C99A3E'; // WASPADA
+            let radius = 6;
             if (p.risk_tier.includes('AWAS')) {
-                color = '#ef4444';
-                radius = 11;
+                color = '#C4452F';
+                radius = 10;
             } else if (p.risk_tier.includes('SIAGA')) {
-                color = '#f97316';
-                radius = 9;
+                color = '#D9762B';
+                radius = 8;
             }
 
             const marker = L.circleMarker([coords[1], coords[0]], {
                 radius: radius,
                 fillColor: color,
-                color: '#ffffff',
-                weight: 1.5,
+                color: '#100F0D',
+                weight: 1,
                 opacity: 0.9,
-                fillOpacity: 0.75
+                fillOpacity: 0.8
             });
 
+            const cleanEta = p.estimated_eta ? p.estimated_eta.replace(/⚡/g, '').trim() : '3-6 jam (Siang Ini)';
+
             marker.bindPopup(`
-                <div style="font-family:Inter,sans-serif;min-width:220px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <strong style="color:${color};font-size:13px;">🔮 PREDIKSI RISIKO 24 JAM</strong>
-                        <span style="font-size:10px;background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;">${p.grid_id}</span>
+                <div style="font-family:'IBM Plex Mono', 'Archivo', monospace;min-width:220px;font-size:11px;color:#E9E2D4;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;border-bottom:1px solid #2B2721;padding-bottom:4px;">
+                        <strong style="color:${color};font-size:11px;letter-spacing:0.04em;">24H ML RISK ESTIMATE</strong>
+                        <span style="font-size:10px;background:#100F0D;border:1px solid #2B2721;padding:1px 5px;">${p.grid_id}</span>
                     </div>
-                    <span style="color:#aaa;font-size:11px;">📍 ${p.province || 'Kalimantan'}</span><br><br>
-                    🔥 Tingkat Bahaya: <strong style="color:${color}">${p.risk_tier}</strong><br>
-                    📊 Probabilitas Terkalibrasi: <strong>${riskPct}%</strong><br>
-                    ⏱️ Estimasi Waktu (ETA): <strong style="color:#38bdf8;">${p.estimated_eta || '3-6 jam (Siang Ini)'}</strong><br>
-                    ⚡ Estimasi Intensitas (FRP): <strong>${p.predicted_frp_mw} MW</strong><br>
-                    ☀️ Hari Kering (CDD): <strong>${p.dry_days} hari</strong><br>
-                    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:6px 0;">
-                    <span style="font-size:10px;color:#888;">Model: XGBoost (Shallow) + LightGBM Regressor</span>
+                    <span style="color:#948B7E;">REGION: ${p.province || 'Kalimantan'}</span><br><br>
+                    ALERT TIER: <strong style="color:${color}">${p.risk_tier}</strong><br>
+                    PROBABILITY: <strong>${riskPct}%</strong><br>
+                    ETA WINDOW: <strong style="color:#E9E2D4;">${cleanEta}</strong><br>
+                    PREDICTED FRP: <strong>${p.predicted_frp_mw} MW</strong><br>
+                    CONSECUTIVE DRY DAYS: <strong>${p.dry_days} hari</strong><br>
+                    <hr style="border:none;border-top:1px solid #2B2721;margin:6px 0;">
+                    <span style="font-size:9.5px;color:#948B7E;">MODEL: XGBoost + LightGBM Regressor</span>
                 </div>
             `);
 
@@ -362,7 +389,7 @@ const loadTopPredictionsTable = async () => {
         if (!els.predictionTable) return;
 
         if (cells.length === 0) {
-            els.predictionTable.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">Tidak ada sel risiko tinggi yang terdeteksi saat ini.</td></tr>';
+            els.predictionTable.innerHTML = '<tr><td colspan="8" class="table-empty">Tidak ada sel risiko tinggi yang terdeteksi saat ini.</td></tr>';
             return;
         }
 
@@ -373,14 +400,16 @@ const loadTopPredictionsTable = async () => {
             else if (c.risk_tier.includes('SIAGA')) badgeClass = 'badge-siaga';
             else if (c.risk_tier.includes('NORMAL')) badgeClass = 'badge-normal';
 
+            const cleanEta = c.estimated_eta ? c.estimated_eta.replace(/⚡/g, '').trim() : '2-5 jam (13:00-16:30)';
+
             return `
                 <tr>
                     <td><strong>${c.grid_id}</strong></td>
                     <td>${c.province || 'Kalimantan'}</td>
-                    <td><strong>${riskPct}%</strong> <span style="font-size:10px;color:#888;">(raw ${(c.raw_risk * 100).toFixed(0)}%)</span></td>
+                    <td><strong>${riskPct}%</strong> <span style="font-size:10px;color:var(--muted);">(raw ${(c.raw_risk * 100).toFixed(0)}%)</span></td>
                     <td><span class="badge ${badgeClass}">${c.risk_tier}</span></td>
-                    <td><span style="color:#38bdf8;font-weight:600;font-size:11px;">${c.estimated_eta || '⚡ 2-5 jam (13:00-16:30)'}</span></td>
-                    <td><span style="color:#f5a623;font-weight:600;">${c.predicted_frp_mw} MW</span></td>
+                    <td><span style="color:var(--bone);font-weight:600;font-size:11px;">${cleanEta}</span></td>
+                    <td><span style="color:var(--sev-siaga);font-weight:600;">${c.predicted_frp_mw} MW</span></td>
                     <td>${c.consecutive_dry_days} hari</td>
                     <td>${c.hotspot_count_prev_7d}</td>
                 </tr>
@@ -392,11 +421,11 @@ const loadTopPredictionsTable = async () => {
 };
 
 const getAlertColor = (level) => ({
-    'MONITOR': '#4dabf7',
-    'WATCH': '#f5a623',
-    'WARNING': '#ff6b35',
-    'EMERGENCY': '#ff3b3b',
-}[level] || '#8888a0');
+    'MONITOR': '#8A9A72',
+    'WATCH': '#C99A3E',
+    'WARNING': '#D9762B',
+    'EMERGENCY': '#C4452F',
+}[level] || '#948B7E');
 
 const updateFireMarkers = (fires) => {
     const activeIds = new Set();
@@ -412,23 +441,24 @@ const updateFireMarkers = (fires) => {
         const contained = fire.percent_contained || 0;
         const name = fire.name || 'Unknown';
         const isPeat = fire.is_peatland || false;
-        const radius = Math.max(6, Math.min(Math.sqrt(ha) * 1.5, 36));
-        const color = isPeat ? '#ff3b3b' : getAlertColor(alert);
+        const radius = Math.max(5, Math.min(Math.sqrt(ha) * 1.4, 30));
+        const color = isPeat ? '#C4452F' : getAlertColor(alert);
+        const textColor = (isPeat || alert === 'EMERGENCY') ? '#E07A60' : color;
 
         let weatherInfo = '';
         if (fire.weather) {
-            weatherInfo = `<br>🌡️ ${fire.weather.temperature_c}°C &bull; 💧 ${fire.weather.humidity_pct}% &bull; 💨 ${fire.weather.wind_speed_kph} km/h`;
+            weatherInfo = `TEMP: ${fire.weather.temperature_c}°C &bull; HUM: ${fire.weather.humidity_pct}% &bull; WIND: ${fire.weather.wind_speed_kph} km/h`;
         }
 
         const popupContent = `
-            <div style="font-family:Inter,sans-serif;min-width:210px;">
-                <strong style="font-size:14px;">${name}</strong><br>
-                <span style="color:#aaa;">${fire.province || fire.state || ''} &bull; ${fire.county || ''}</span><br>
-                ${isPeat ? '<span class="peat-tag">🔥 Lahan Gambut (Peatland)</span>' : '<span class="mineral-tag">Mineral Forest</span>'}<br><br>
-                📏 Area: <strong>${formatNumber(ha)} ha</strong> (${formatNumber(acres)} ac)<br>
-                📊 Contained: <strong>${contained.toFixed(0)}%</strong><br>
-                ⚠️ Alert: <strong style="color:${color}">${alert}</strong>
-                ${weatherInfo}
+            <div style="font-family:'IBM Plex Mono', 'Archivo', monospace;min-width:210px;font-size:11px;color:#E9E2D4;">
+                <strong style="font-size:13px;color:#E9E2D4;">${name}</strong><br>
+                <span style="color:#948B7E;">${fire.province || fire.state || ''} &bull; ${fire.county || ''}</span><br>
+                ${isPeat ? '<span class="peat-tag">GAMBUT // PEATLAND</span>' : '<span class="mineral-tag">MINERAL FOREST</span>'}<br><br>
+                AREA: <strong>${formatNumber(ha)} ha</strong> (${formatNumber(acres)} ac)<br>
+                CONTAINED: <strong>${contained.toFixed(0)}%</strong><br>
+                ALERT TIER: <strong style="color:${textColor}">${alert}</strong>
+                ${weatherInfo ? '<br><span style="color:#948B7E;">' + weatherInfo + '</span>' : ''}
             </div>
         `;
 
@@ -436,11 +466,11 @@ const updateFireMarkers = (fires) => {
             const marker = fireMarkers.get(id);
             marker.setLatLng([lat, lon]);
             marker.setRadius(radius);
-            marker.setStyle({ color, fillColor: color, fillOpacity: isPeat ? 0.65 : 0.5, weight: 2 });
+            marker.setStyle({ color: '#100F0D', fillColor: color, fillOpacity: isPeat ? 0.8 : 0.65, weight: 1 });
             marker.setPopupContent(popupContent);
         } else {
             const marker = L.circleMarker([lat, lon], {
-                radius, color, fillColor: color, fillOpacity: isPeat ? 0.65 : 0.5, weight: 2
+                radius, color: '#100F0D', fillColor: color, fillOpacity: isPeat ? 0.8 : 0.65, weight: 1
             }).addTo(fireLayerGroup);
             marker.bindPopup(popupContent);
             marker.on('click', () => map.flyTo([lat, lon], 8, { duration: 1.2 }));
@@ -448,7 +478,6 @@ const updateFireMarkers = (fires) => {
         }
     });
 
-    // Remove markers for fires no longer active
     for (const [id, marker] of fireMarkers) {
         if (!activeIds.has(id)) {
             fireLayerGroup.removeLayer(marker);
@@ -470,20 +499,19 @@ const renderFiresTable = (fires) => {
         const isPeat = fire.is_peatland || false;
         const tr = document.createElement('tr');
 
-        // Determine trend from acre_change if available, otherwise stable
-        let trendHtml = '<span style="color:var(--text-secondary)">●</span>';
+        let trendHtml = '<span style="color:var(--muted)">=</span>';
         if (fire.acre_change > 50) {
-            trendHtml = '<span style="color:var(--danger)">▲</span>';
+            trendHtml = '<span style="color:var(--sev-awas);font-weight:700;">+</span>';
         } else if (fire.acre_change < -20) {
-            trendHtml = '<span style="color:var(--success)">▼</span>';
+            trendHtml = '<span style="color:var(--olive);font-weight:700;">-</span>';
         }
 
         tr.innerHTML = `
             <td><strong>${fire.name || 'Unknown'}</strong></td>
             <td>${fire.province || fire.state || '—'} / ${fire.county || '—'}</td>
-            <td><strong>${formatNumber(ha)} ha</strong> <span style="color:#888;font-size:0.75rem;">(${formatNumber(acres)} ac)</span></td>
+            <td><strong>${formatNumber(ha)} ha</strong> <span style="color:var(--muted);font-size:0.75rem;">(${formatNumber(acres)} ac)</span></td>
             <td>${contained}%</td>
-            <td>${isPeat ? '<span class="peat-tag">Gambut</span>' : '<span class="mineral-tag">Mineral</span>'}</td>
+            <td>${isPeat ? '<span class="peat-tag">GAMBUT</span>' : '<span class="mineral-tag">MINERAL</span>'}</td>
             <td><span class="badge badge-${alert.toLowerCase()}">${alert}</span></td>
             <td>${trendHtml}</td>
         `;
@@ -503,33 +531,37 @@ const updateVIGauge = (vi) => {
     const maxDash = 251.3;
     const normalized = Math.max(0, Math.min(1, (vi + 1) / 2));
     const dashLength = normalized * maxDash;
-    els.viGaugePath.style.strokeDasharray = `${dashLength} ${maxDash}`;
+    if (els.viGaugePath) {
+        els.viGaugePath.style.strokeDasharray = `${dashLength} ${maxDash}`;
+    }
 
-    // Animate the text
-    animateValue(els.viGaugeText, currentStats.vi, vi, 800);
-
-    // Update stat card
-    animateValue(els.statVI, currentStats.vi, vi, 800);
+    animateValue(els.viGaugeText, currentStats.vi, vi, 500);
+    animateValue(els.statVI, currentStats.vi, vi, 500);
     currentStats.vi = vi;
 };
 
 const updateVIComponents = (c1, c2, c3) => {
-    els.valC1.textContent = c1.toFixed(2);
-    els.valC2.textContent = c2.toFixed(2);
-    els.valC3.textContent = c3.toFixed(2);
+    if (els.valC1) els.valC1.textContent = c1.toFixed(2);
+    if (els.valC2) els.valC2.textContent = c2.toFixed(2);
+    if (els.valC3) els.valC3.textContent = c3.toFixed(2);
 
-    // Map [-1, +1] → [0%, 100%]
-    els.barC1.style.width = `${((c1 + 1) / 2) * 100}%`;
-    els.barC2.style.width = `${((c2 + 1) / 2) * 100}%`;
-    els.barC3.style.width = `${((c3 + 1) / 2) * 100}%`;
-
-    els.barC1.style.backgroundColor = interpolateColor(c1);
-    els.barC2.style.backgroundColor = interpolateColor(c2);
-    els.barC3.style.backgroundColor = interpolateColor(c3);
+    if (els.barC1) {
+        els.barC1.style.width = `${((c1 + 1) / 2) * 100}%`;
+        els.barC1.style.backgroundColor = interpolateColor(c1);
+    }
+    if (els.barC2) {
+        els.barC2.style.width = `${((c2 + 1) / 2) * 100}%`;
+        els.barC2.style.backgroundColor = interpolateColor(c2);
+    }
+    if (els.barC3) {
+        els.barC3.style.width = `${((c3 + 1) / 2) * 100}%`;
+        els.barC3.style.backgroundColor = interpolateColor(c3);
+    }
 };
 
 // ─── Feed Items ─────────────────────────────────────────────────────────────
 const addFeedItem = (container, data, isDispatch = false, isInitial = false) => {
+    if (!container) return;
     const div = document.createElement('div');
     div.className = `feed-item ${isDispatch ? 'dispatch-item' : ''}`;
 
@@ -538,7 +570,8 @@ const addFeedItem = (container, data, isDispatch = false, isInitial = false) => 
         playEmergencyAlert();
     }
 
-    const message = data.message || data.fire_name || JSON.stringify(data);
+    const rawMessage = data.message || data.fire_name || JSON.stringify(data);
+    const message = stripEmoji(rawMessage);
     const timestamp = data.timestamp || Date.now() / 1000;
 
     let extraInfo = '';
@@ -550,18 +583,19 @@ const addFeedItem = (container, data, isDispatch = false, isInitial = false) => 
         const station = data.station || data.nearest_station || '';
         let resourcesList = data.resources || [];
         if (data.resources_deployed && (!resourcesList || resourcesList.length === 0)) {
-            resourcesList = data.resources_deployed.map(r => r.display || `${r.icon || '🚒'} ${r.name || 'Resource'}`);
+            resourcesList = data.resources_deployed.map(r => r.display || r.name || 'Resource');
         }
+        resourcesList = resourcesList.map(r => stripEmoji(typeof r === 'string' ? r : (r.display || r.name || 'Resource')));
 
         extraInfo = `
-            <div style="margin-top:0.4rem;font-size:0.8rem;color:var(--text-secondary);">
-                ${severity ? '⚡ ' + severity : ''}
-                ${personnel ? ' · 👥 ' + personnel + ' personel' : ''}
-                ${eta ? ' · ⏱️ ETA ' + eta + 'min' : ''}
-                ${evac ? ' · 🚨 EVAKUASI' : ''}
-                ${station ? '<br>🏢 ' + station : ''}
+            <div style="margin-top:0.35rem;font-size:0.75rem;color:var(--muted);font-family:var(--font-mono);">
+                ${severity ? '[' + severity + ']' : ''}
+                ${personnel ? ' &bull; PERS: ' + personnel : ''}
+                ${eta ? ' &bull; ETA: ' + eta + 'm' : ''}
+                ${evac ? ' &bull; [EVACUATION MANDATE]' : ''}
+                ${station ? '<br>BASE: ' + station : ''}
             </div>
-            ${resourcesList.length > 0 ? '<div style="margin-top:0.3rem;font-size:0.75rem;color:var(--text-secondary);">' + resourcesList.join('<br>') + '</div>' : ''}
+            ${resourcesList.length > 0 ? '<div style="margin-top:0.25rem;font-size:0.72rem;color:var(--faint);font-family:var(--font-mono);">' + resourcesList.join('<br>') + '</div>' : ''}
         `;
     }
 
@@ -575,7 +609,6 @@ const addFeedItem = (container, data, isDispatch = false, isInitial = false) => 
     `;
 
     container.prepend(div);
-    // Cap at 50 entries
     while (container.children.length > 50) {
         container.removeChild(container.lastChild);
     }
@@ -583,9 +616,10 @@ const addFeedItem = (container, data, isDispatch = false, isInitial = false) => 
 
 // ─── Predictions Panel ──────────────────────────────────────────────────────
 const updatePredictions = (data) => {
-    if (!data) return;
+    if (!data || !els.predictions) return;
 
-    const assessment = (typeof data.analysis === 'string' ? data.analysis : null) || data.risk_assessment || data.overall_assessment || data.summary || data.assessment || 'Analysis in progress...';
+    const rawAssessment = (typeof data.analysis === 'string' ? data.analysis : null) || data.risk_assessment || data.overall_assessment || data.summary || data.assessment || 'Analisis risiko operasional sedang berjalan...';
+    const assessment = stripEmoji(rawAssessment);
     let urgency = data.urgency_score;
     if (urgency === undefined || urgency === null) {
         const lvl = String(data.status || data.risk_level || '').toUpperCase();
@@ -594,17 +628,17 @@ const updatePredictions = (data) => {
         else if (lvl.includes('MOD') || lvl.includes('MED')) urgency = 0.50;
         else urgency = 0.30;
     }
-    const urgencyColor = urgency > 0.7 ? 'var(--danger)' : urgency > 0.4 ? 'var(--warning)' : 'var(--success)';
+    const urgencyColor = urgency > 0.7 ? 'var(--sev-awas)' : urgency > 0.4 ? 'var(--sev-siaga)' : 'var(--olive)';
 
     let metricsHtml = '';
     if (data.key_metrics) {
         const km = data.key_metrics;
         metricsHtml = `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin:0.6rem 0;padding:0.5rem;background:rgba(255,255,255,0.03);border-radius:6px;font-size:0.78rem;">
-                <div><span style="color:var(--text-secondary)">Viability Index:</span> <strong style="color:${(km.viability_index || 0) < 0 ? 'var(--danger)' : 'var(--success)'}">${km.viability_index !== undefined ? km.viability_index : '--'}</strong></div>
-                <div><span style="color:var(--text-secondary)">Total Acres:</span> <strong>${km.total_acres ? Number(km.total_acres).toLocaleString() : '--'} ac</strong></div>
-                <div><span style="color:var(--text-secondary)">Active Fires:</span> <strong>${km.active_fires || km.new_fires || '--'}</strong></div>
-                <div><span style="color:var(--text-secondary)">Containment:</span> <strong style="color:var(--danger)">${km.containment || '5%'}</strong></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;margin:0.6rem 0;padding:0.6rem;background:var(--ground);border:1px solid var(--hairline);font-size:0.75rem;">
+                <div><span style="color:var(--muted)">Viability Index:</span> <strong style="color:${(km.viability_index || 0) < 0 ? 'var(--sev-awas)' : 'var(--olive)'}">${km.viability_index !== undefined ? km.viability_index : '--'}</strong></div>
+                <div><span style="color:var(--muted)">Total Area:</span> <strong>${km.total_acres ? Number(km.total_acres).toLocaleString() : '--'} ac</strong></div>
+                <div><span style="color:var(--muted)">Active Fires:</span> <strong>${km.active_fires || km.new_fires || '--'}</strong></div>
+                <div><span style="color:var(--muted)">Containment:</span> <strong style="color:var(--sev-awas)">${km.containment || '5%'}</strong></div>
             </div>
         `;
     }
@@ -615,23 +649,23 @@ const updatePredictions = (data) => {
                     (Array.isArray(data.top_fires) && data.top_fires.length > 0) ? data.top_fires : [];
 
     if (topList.length > 0 && typeof topList[0] === 'object' && topList[0].fire_id) {
-        fireDetails = '<div style="margin-top:0.8rem;">' + topList.slice(0, 5).map(f => `
-            <div style="margin-bottom:0.5rem;padding:0.5rem;background:rgba(0,0,0,0.25);border-radius:6px;border-left:3px solid var(--danger);">
+        fireDetails = '<div style="margin-top:0.75rem;">' + topList.slice(0, 5).map(f => `
+            <div style="margin-bottom:0.45rem;padding:0.5rem 0.65rem;background:var(--ground);border:1px solid var(--hairline);">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <strong>${f.fire_name || f.fire_id}</strong>
                     <span class="badge badge-${(f.risk_level || 'critical').toLowerCase()}">${f.risk_level || 'CRITICAL'}</span>
                 </div>
-                ${f.predicted_spread ? `<div style="font-size:0.8rem;color:var(--text-secondary);margin-top:0.25rem;">${f.predicted_spread}</div>` : ''}
-                ${f.key_concerns ? `<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.2rem;">⚠️ ${Array.isArray(f.key_concerns) ? f.key_concerns.join(' · ') : f.key_concerns}</div>` : ''}
-                ${f.recommended_action ? `<div style="font-size:0.75rem;color:var(--accent);margin-top:0.2rem;">🛡️ ${f.recommended_action}</div>` : ''}
+                ${f.predicted_spread ? `<div style="font-size:0.75rem;color:var(--muted);margin-top:0.25rem;">${f.predicted_spread}</div>` : ''}
+                ${f.key_concerns ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;">CONCERN: ${Array.isArray(f.key_concerns) ? f.key_concerns.join(' &bull; ') : f.key_concerns}</div>` : ''}
+                ${f.recommended_action ? `<div style="font-size:0.72rem;color:var(--bone);margin-top:0.2rem;">ACTION: ${f.recommended_action}</div>` : ''}
             </div>
         `).join('') + '</div>';
     } else if (topList.length > 0) {
-        fireDetails = '<div style="margin-top:0.8rem;"><div style="font-size:0.78rem;font-weight:600;color:var(--text-secondary);margin-bottom:0.4rem;">🔥 Top Priority Incidents:</div>' +
+        fireDetails = '<div style="margin-top:0.75rem;"><div style="font-size:0.72rem;font-weight:600;color:var(--muted);margin-bottom:0.35rem;text-transform:uppercase;">PRIORITY INCIDENTS:</div>' +
             topList.slice(0, 5).map(f => {
                 const str = typeof f === 'string' ? f : (f.fire_name || f.name || JSON.stringify(f));
                 return `
-                <div style="margin-bottom:0.4rem;padding:0.45rem 0.6rem;background:rgba(255,255,255,0.03);border-left:3px solid var(--danger);border-radius:4px;font-size:0.8rem;color:var(--text-primary);">
+                <div style="margin-bottom:0.35rem;padding:0.4rem 0.55rem;background:var(--ground);border:1px solid var(--hairline);font-size:0.75rem;color:var(--bone);">
                     ${str}
                 </div>`;
             }).join('') + '</div>';
@@ -641,28 +675,29 @@ const updatePredictions = (data) => {
     if (Array.isArray(data.ignition_hotspots) && data.ignition_hotspots.length > 0) {
         hotspotsHtml = `
             <div style="margin-top:0.6rem;">
-                <div style="font-size:0.78rem;font-weight:600;color:var(--accent);margin-bottom:0.3rem;">🔮 24-Hour ML Predictive Hotspots:</div>
+                <div style="font-size:0.72rem;font-weight:600;color:var(--ember);margin-bottom:0.3rem;text-transform:uppercase;">24H ML PREDICTIVE HOTSPOTS:</div>
                 ${data.ignition_hotspots.slice(0, 3).map(h => `
-                    <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.25rem;padding:0.25rem 0.4rem;background:rgba(255,255,255,0.02);border-radius:4px;">
-                        📍 ${typeof h === 'string' ? h : `${h.grid_id || ''} (${h.province || ''}): ${h.risk || ''}`}
+                    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.2rem;padding:0.25rem 0.45rem;background:var(--ground);border:1px solid var(--hairline-subtle);">
+                        CELL: ${typeof h === 'string' ? h : `${h.grid_id || ''} (${h.province || ''}): ${h.risk || ''}`}
                     </div>
                 `).join('')}
             </div>
         `;
     }
 
-    const recommendation = data.system_recommendation || data.recommendation || '';
+    const rawRec = data.system_recommendation || data.recommendation || '';
+    const recommendation = stripEmoji(rawRec);
 
     els.predictions.innerHTML = `
         <div style="margin-bottom:0.6rem;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-weight:600;font-size:0.92rem;">🤖 Executive Risk Assessment</span>
-            <span style="color:${urgencyColor};font-weight:700;font-size:0.82rem;padding:0.15rem 0.5rem;background:rgba(255,255,255,0.05);border-radius:4px;">
-                Urgency: ${(urgency * 100).toFixed(0)}%
+            <span style="font-weight:600;font-size:0.85rem;letter-spacing:0.06em;text-transform:uppercase;">EXECUTIVE RISK DIRECTIVE</span>
+            <span style="color:var(--bone);font-weight:700;font-size:0.75rem;padding:0.15rem 0.45rem;background:var(--ground);border:1px solid var(--hairline);border-left:2px solid ${urgencyColor};">
+                URGENCY: ${(urgency * 100).toFixed(0)}%
             </span>
         </div>
-        <p style="color:var(--text-primary);font-size:0.88rem;line-height:1.45;margin-bottom:0.5rem;">${assessment}</p>
+        <p style="color:var(--bone);font-size:0.8rem;line-height:1.45;margin-bottom:0.5rem;">${assessment}</p>
         ${metricsHtml}
-        ${recommendation ? `<p style="margin-top:0.5rem;font-size:0.85rem;color:var(--secondary);padding:0.4rem 0.6rem;background:rgba(14,165,233,0.08);border-left:3px solid var(--secondary);border-radius:4px;">📋 <strong>Recommendation:</strong> ${recommendation}</p>` : ''}
+        ${recommendation ? `<div style="margin-top:0.5rem;font-size:0.78rem;color:var(--bone);padding:0.45rem 0.6rem;background:var(--ground);border:1px solid var(--hairline);"><strong>DIRECTIVE:</strong> ${recommendation}</div>` : ''}
         ${hotspotsHtml}
         ${fireDetails}
     `;
@@ -676,10 +711,10 @@ const updateJevPanel = (data) => {
 
     if (els.jevStatusBadge) {
         if (d.error) {
-            els.jevStatusBadge.textContent = 'Degraded';
+            els.jevStatusBadge.textContent = 'DEGRADED';
             els.jevStatusBadge.className = 'badge badge-critical';
         } else {
-            els.jevStatusBadge.textContent = 'Active';
+            els.jevStatusBadge.textContent = 'ACTIVE';
             els.jevStatusBadge.className = 'badge badge-safe';
         }
     }
@@ -700,11 +735,11 @@ const updateJevPanel = (data) => {
     const level = (d.recommended_response_level || 'MONITOR').toUpperCase();
     if (els.jevResponseLevel) {
         els.jevResponseLevel.textContent = level;
-        els.jevResponseLevel.className = `jev-response-level jev-level-${level.toLowerCase()}`;
+        els.jevResponseLevel.className = `jev-response-level font-mono jev-level-${level.toLowerCase()}`;
     }
     if (els.jevResponseConf) {
         const conf = Math.round((d.response_level_confidence || 0) * 100);
-        els.jevResponseConf.textContent = `conf: ${conf}%`;
+        els.jevResponseConf.textContent = `CONF: ${conf}%`;
     }
 
     if (els.jevSeverityScore) {
@@ -713,20 +748,20 @@ const updateJevPanel = (data) => {
     }
     if (els.jevSeverityConf) {
         const sConf = Math.round((d.severity_confidence || 0) * 100);
-        els.jevSeverityConf.textContent = `conf: ${sConf}%`;
+        els.jevSeverityConf.textContent = `CONF: ${sConf}%`;
     }
 
     if (els.jevLatency) {
-        els.jevLatency.textContent = `⏱ ${Math.round(d.latency_ms || 0)}ms`;
+        els.jevLatency.textContent = `LATENCY: ${Math.round(d.latency_ms || 0)}ms`;
     }
 
     if (els.jevOverrideStatus) {
         if (overridePct >= 85) {
-            els.jevOverrideStatus.textContent = '⚡ Override Active';
-            els.jevOverrideStatus.className = 'jev-override-status active';
+            els.jevOverrideStatus.textContent = 'OVERRIDE ACTIVE';
+            els.jevOverrideStatus.className = 'jev-override-status font-mono active';
         } else {
-            els.jevOverrideStatus.textContent = 'AVF Synchronized';
-            els.jevOverrideStatus.className = 'jev-override-status';
+            els.jevOverrideStatus.textContent = 'SYNCHRONIZED';
+            els.jevOverrideStatus.className = 'jev-override-status font-mono';
         }
     }
 };
@@ -736,7 +771,7 @@ const connectSSE = () => {
     if (eventSource) eventSource.close();
 
     els.connDot.className = 'pulse-dot';
-    els.connStatus.textContent = 'Connecting...';
+    els.connStatus.textContent = 'CONNECTING...';
 
     try {
         eventSource = new EventSource('/stream');
@@ -744,7 +779,7 @@ const connectSSE = () => {
         eventSource.addEventListener('connected', () => {
             els.connDot.className = 'pulse-dot';
             els.connDot.classList.remove('disconnected');
-            els.connStatus.textContent = 'Live Monitoring';
+            els.connStatus.textContent = 'ONLINE // STREAMING';
             reconnectDelay = 1000;
         });
 
@@ -767,14 +802,13 @@ const connectSSE = () => {
             updateVIGauge(data.viability_index);
             updateVIComponents(data.c1_safety, data.c2_fairness, data.c3_stability);
 
-            // Update t* stat
             if (data.t_star !== null && data.t_star !== undefined) {
                 const tMin = (data.t_star / 60).toFixed(1);
                 els.statTTV.textContent = `${tMin} min`;
-                els.statTTV.style.color = data.t_star < 300 ? 'var(--danger)' : 'var(--warning)';
+                els.statTTV.style.color = data.t_star < 300 ? 'var(--sev-awas)' : 'var(--sev-waspada)';
             } else {
-                els.statTTV.textContent = 'Safe ✓';
-                els.statTTV.style.color = 'var(--success)';
+                els.statTTV.textContent = 'NOMINAL';
+                els.statTTV.style.color = 'var(--olive)';
             }
         });
 
@@ -803,15 +837,14 @@ const connectSSE = () => {
             if (data.status === 'online' || data.status === 'keepalive') {
                 els.connDot.className = 'pulse-dot';
                 els.connDot.classList.remove('disconnected');
-                els.connStatus.textContent = `Live · Cycle #${data.cycle || '—'}`;
+                els.connStatus.textContent = `CYCLE #${data.cycle || '—'}`;
             }
         });
 
         eventSource.onerror = () => {
             els.connDot.classList.add('disconnected');
-            els.connStatus.textContent = 'Reconnecting...';
+            els.connStatus.textContent = 'RECONNECTING...';
             eventSource.close();
-            // Exponential backoff
             setTimeout(connectSSE, reconnectDelay);
             reconnectDelay = Math.min(reconnectDelay * 2, 30000);
         };
