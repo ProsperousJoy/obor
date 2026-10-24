@@ -15,11 +15,11 @@ import numpy as np
 import pandas as pd
 import duckdb
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from config.settings import PROVINCIAL_CAPITALS, BORNEO_BBOX
+from src.ml.config.settings import PROVINCIAL_CAPITALS, BORNEO_BBOX
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("interpolate_weather")
