@@ -81,6 +81,12 @@ class ImpactAgent:
             conn = duckdb.connect(self.db_path)
             close_conn = True
 
+        try:
+            from src.storage.bootstrap import bootstrap_response_warehouse
+            bootstrap_response_warehouse(conn)
+        except Exception:
+            pass
+
         # Query all vulnerable assets from warehouse
         assets_df = conn.execute("""
             SELECT asset_id, asset_name, asset_type, province, kabupaten, 

@@ -78,6 +78,12 @@ class ResourceAgent:
             conn = duckdb.connect(self.db_path)
             close_conn = True
 
+        try:
+            from src.storage.bootstrap import bootstrap_response_warehouse
+            bootstrap_response_warehouse(conn)
+        except Exception:
+            pass
+
         df = conn.execute("""
             SELECT hq_id, hq_name, agency, province, kabupaten,
                    lat, lon, crew_available, crew_on_duty,

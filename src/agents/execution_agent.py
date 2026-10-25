@@ -113,6 +113,12 @@ class ExecutionAgent:
             close_conn = True
 
         try:
+            from src.storage.bootstrap import bootstrap_response_warehouse
+            bootstrap_response_warehouse(conn)
+        except Exception:
+            pass
+
+        try:
             target_dt = fire_prediction.get("prediction_time", "2026-09-25 00:00:00")
             grid_id = fire_prediction.get("grid_id", "G0000_0000")
             fire_prob = float(fire_prediction.get("fire_probability", 0.5))
@@ -202,6 +208,12 @@ class ExecutionAgent:
         if conn is None:
             conn = duckdb.connect(self.db_path, read_only=False)
             close_conn = True
+
+        try:
+            from src.storage.bootstrap import bootstrap_response_warehouse
+            bootstrap_response_warehouse(conn)
+        except Exception:
+            pass
 
         try:
             conn.execute("""

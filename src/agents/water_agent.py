@@ -76,6 +76,12 @@ class WaterResourceAgent:
             conn = duckdb.connect(self.db_path)
             close_conn = True
 
+        try:
+            from src.storage.bootstrap import bootstrap_response_warehouse
+            bootstrap_response_warehouse(conn)
+        except Exception:
+            pass
+
         df = conn.execute("""
             SELECT source_id, source_name, water_type, province, kabupaten,
                    lat, lon, capacity_m3, surface_area_m2, historical_permanence_score,

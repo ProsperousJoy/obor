@@ -14,3 +14,11 @@ Thumbs.db
 .vscode/
 scratch/
 *.log
+data/
+data warehouse/
+outputs/
+*.duckdb
+*.duckdb.wal
+*.parquet
+*.zip
+*.tar.gz

@@ -43,6 +43,12 @@ class ResponseSystemOrchestrator:
         """
         conn = duckdb.connect(self.db_path, read_only=False)
         try:
+            try:
+                from src.storage.bootstrap import bootstrap_response_warehouse
+                bootstrap_response_warehouse(conn)
+            except Exception:
+                pass
+
             # 1. Modul 2: Trust Assessment
             trust_out = self.trust_supervisor.evaluate_trust(
                 incident_id=incident_id,
