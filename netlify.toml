@@ -5,6 +5,16 @@
 [build]
   publish = "static"
 
+# ── Asset path fix ───────────────────────────────────────────────
+# index.html references /static/index.css + /static/app.js (FastAPI mount
+# style), but Netlify serves the static/ folder contents at the site
+# root. Rewrite /static/* to /* so assets resolve.
+[[redirects]]
+  from = "/static/*"
+  to = "/:splat"
+  status = 200
+  force = true
+
 # ── Proxy all API calls to the OBOR backend ─────────────────────
 # TODO: replace with your Render backend URL after deploying it, e.g.
 #   https://obor-backend.onrender.com
