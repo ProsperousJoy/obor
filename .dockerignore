@@ -14,9 +14,15 @@ Thumbs.db
 .vscode/
 scratch/
 *.log
-data/
 data warehouse/
-outputs/
+data/archives/*
+data/warehouse/*.duckdb*
+data/warehouse/*.parquet
+data/warehouse/parquet/
+data/operational/*.db
+data/operational/*.parquet
+outputs/*
+!outputs/models/
 *.duckdb
 *.duckdb.wal
 *.parquet
