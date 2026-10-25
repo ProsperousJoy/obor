@@ -26,12 +26,13 @@ RUN mkdir -p data/operational data/warehouse data/archives outputs/models output
 # Copy repository code, models, static dashboard assets, and documentation
 COPY . .
 
-# Expose standard OBOR application port
-EXPOSE 8000
+# Expose standard OBOR port + Hugging Face Spaces port
+EXPOSE 8000 7860
 
 # Health check to ensure FastAPI REST endpoints are responsive
+# (env-aware: HF Spaces runs on 7860, local/Docker on 8000)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Launch OBOR multi-agent system
 CMD ["python", "main.py"]
