@@ -140,11 +140,32 @@
 
 ## 🚀 Quick Start
 
-### 1. Prerequisites
+### Option A: 🐳 Docker (Recommended for Team & Cross-Platform)
+
+Running with Docker guarantees consistent runtime environments across Linux, macOS (Apple Silicon / Intel), and Windows without local C++/OpenMP (`libgomp`/`libomp`) dependency issues:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/ProsperousJoy/obor.git
+cd obor
+
+# 2. Configure environment
+cp .env.example .env
+
+# 3. Start the system via Docker Compose
+docker compose up --build
+```
+Open your browser at **http://localhost:8000**.
+
+---
+
+### Option B: 🐍 Local Python Setup
+
+#### 1. Prerequisites
 - Python 3.10 or higher
 - Git
 
-### 2. Clone and Setup Environment
+#### 2. Clone and Setup Environment
 ```bash
 git clone https://github.com/ProsperousJoy/obor.git
 cd obor

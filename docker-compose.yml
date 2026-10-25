@@ -1,0 +1,20 @@
+services:
+  obor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: obor-wildfire-ai
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

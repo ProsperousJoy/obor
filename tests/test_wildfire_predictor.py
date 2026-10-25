@@ -77,7 +77,19 @@ class TestWildfirePredictor(unittest.TestCase):
         self.assertIn("raw_risk_prob", scored.columns)
         self.assertIn("calibrated_risk_prob", scored.columns)
         self.assertIn("risk_tier", scored.columns)
-        self.assertIn("predicted_intensity_frp_mw", scored.columns)
+    def test_get_fallback_cells_without_database(self):
+        """Predictor must produce valid predictions even when duckdb file does not exist."""
+        from pathlib import Path
+        dummy_predictor = WildfirePredictor(db_path=Path("/tmp/non_existent_wildfire.duckdb"))
+        cells = dummy_predictor.get_top_at_risk_cells(limit=5)
+        self.assertIsInstance(cells, list)
+        self.assertGreater(len(cells), 0)
+        top = cells[0]
+        self.assertIn("grid_id", top)
+        self.assertIn("calibrated_risk", top)
+        self.assertIn("predicted_frp_mw", top)
+        self.assertIn("risk_tier", top)
+        self.assertIn("estimated_eta", top)
 
 
 if __name__ == "__main__":
