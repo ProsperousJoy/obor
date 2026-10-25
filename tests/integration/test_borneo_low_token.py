@@ -42,7 +42,7 @@ async def main():
     # ─────────────────────────────────────────────────────────────────────────
     print("\n[Step 1/6] Connecting to DuckDB Data Warehouse...")
     db_path = config.WAREHOUSE_DB_PATH
-    conn = duckdb.connect(db_path, read_only=True)
+    conn = duckdb.connect(db_path)
     try:
         tables = set(conn.execute("SHOW TABLES").df()["name"].tolist())
         print(f"  Connected to DuckDB: {db_path}")
@@ -148,7 +148,7 @@ async def main():
     print(f"  Evacuation Advisory:    {report.evacuation_advisory}")
 
     # Verify persistence in DuckDB
-    conn = duckdb.connect(db_path, read_only=True)
+    conn = duckdb.connect(db_path)
     try:
         logged_row = conn.execute(f"SELECT incident_id, priority, execution_status FROM fact_incident_records WHERE incident_id = '{report.dispatch_id}'").fetchone()
         assert logged_row is not None, "Dispatch record must be saved in fact_incident_records"

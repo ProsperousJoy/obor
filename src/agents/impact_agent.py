@@ -78,7 +78,7 @@ class ImpactAgent:
         """
         close_conn = False
         if conn is None:
-            conn = duckdb.connect(self.db_path, read_only=True)
+            conn = duckdb.connect(self.db_path)
             close_conn = True
 
         # Query all vulnerable assets from warehouse

@@ -66,9 +66,10 @@ class JevSupervisor:
         self.model: str = config.JEV_MODEL
         self.client: httpx.AsyncClient = httpx.AsyncClient(timeout=15.0)
 
-        self.last_decision: Optional[JevDecision] = None
         self.decision_history: list[JevDecision] = []
         self._enabled: bool = bool(self.api_key)
+        self.last_decision: JevDecision = self._fallback_decision(error=None if self._enabled else "STANDBY")
+        self.decision_history.append(self.last_decision)
 
         if self._enabled:
             logger.info("🧠 Jev AI Supervisor initialized")
@@ -84,7 +85,9 @@ class JevSupervisor:
     ) -> JevDecision:
         """Run a full Jev decision evaluation against current fire state."""
         if not self._enabled:
-            return self._fallback_decision()
+            fallback = self._fallback_decision(error="STANDBY")
+            self.last_decision = fallback
+            return fallback
 
         start = time.time()
         try:
@@ -173,13 +176,19 @@ class JevSupervisor:
         except httpx.HTTPStatusError as e:
             latency = (time.time() - start) * 1000
             logger.error(f"Jev API HTTP error {e.response.status_code}: {e.response.text[:200]}")
-            return self._fallback_decision(
+            fallback = self._fallback_decision(
                 error=f"HTTP {e.response.status_code}", latency=latency
             )
+            self.last_decision = fallback
+            self.decision_history.append(fallback)
+            return fallback
         except Exception as e:
             latency = (time.time() - start) * 1000
             logger.error(f"Jev evaluation error: {e}")
-            return self._fallback_decision(error=str(e), latency=latency)
+            fallback = self._fallback_decision(error=str(e), latency=latency)
+            self.last_decision = fallback
+            self.decision_history.append(fallback)
+            return fallback
 
     def _build_state(self, fires: list[dict], avf_snapshot, changes: dict) -> str:
         """Build a compact, token-efficient state string for Jev evaluation."""
@@ -267,11 +276,11 @@ class JevSupervisor:
 
     def to_dict(self) -> dict:
         """Serialize current Jev supervisor state for API / dashboard."""
-        decision = self.last_decision
+        decision = self.last_decision or self._fallback_decision(error=None if self._enabled else "STANDBY")
         return {
             "enabled": self._enabled,
             "total_decisions": len(self.decision_history),
-            "last_decision": decision.to_dict() if decision else None,
+            "last_decision": decision.to_dict(),
             "decision_history": [
                 {
                     "timestamp": d.timestamp,

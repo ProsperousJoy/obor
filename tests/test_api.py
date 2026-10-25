@@ -61,6 +61,64 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(resp_sync.status_code, 200)
         self.assertEqual(resp_sync.json().get("status"), "success")
 
+    def test_api_jev(self):
+        resp = self.client.get("/api/jev")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("enabled", data)
+        self.assertIn("last_decision", data)
+        self.assertIsNotNone(data["last_decision"])
+        decision = data["last_decision"]
+        self.assertIn("is_immediate_threat", decision)
+        self.assertIn("requires_emergency_dispatch", decision)
+        self.assertIn("avf_override_recommended", decision)
+        self.assertIn("recommended_response_level", decision)
+        self.assertIn("overall_severity_score", decision)
+
+    def test_api_predictions(self):
+        resp = self.client.get("/api/predictions")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("analysis", data)
+
+    def test_api_prediction_top_risk(self):
+        resp = self.client.get("/api/prediction/top-risk?limit=5")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("top_risk_cells", data)
+        self.assertIn("count", data)
+        self.assertIsInstance(data["top_risk_cells"], list)
+        if data["top_risk_cells"]:
+            cell = data["top_risk_cells"][0]
+            self.assertIn("grid_id", cell)
+            self.assertIn("calibrated_risk", cell)
+            self.assertIn("risk_tier", cell)
+            self.assertIn("estimated_eta", cell)
+
+    def test_api_prediction_heatmap(self):
+        resp = self.client.get("/api/prediction/heatmap?limit=10")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data.get("type"), "FeatureCollection")
+        self.assertIn("features", data)
+        self.assertIsInstance(data["features"], list)
+
+    def test_api_prediction_benchmark(self):
+        resp = self.client.get("/api/prediction/benchmark")
+        self.assertIn(resp.status_code, [200, 404])
+
+    def test_api_actions(self):
+        resp = self.client.get("/api/actions")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("actions", resp.json())
+
+    def test_api_warehouse_assets(self):
+        resp = self.client.get("/api/warehouse/assets")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("assets", data)
+        self.assertGreaterEqual(len(data["assets"]), 5)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -69,11 +69,12 @@ class WildfireAgent:
             self._openai = AsyncOpenAI(
                 base_url=config.OPENAI_BASE_URL,
                 api_key=config.OPENAI_API_KEY,
+                timeout=12.0,
             )
 
         self.cycle_count = 0
         self.last_analysis: Optional[dict] = None
-        self.last_jev_decision: Optional[JevDecision] = None
+        self.last_jev_decision: Optional[JevDecision] = self.jev.last_decision
         self.last_snapshot: Optional[GovernanceSnapshot] = None
         self.predictor: WildfirePredictor = get_wildfire_predictor()
         self.last_predictions: list = []
@@ -95,6 +96,23 @@ class WildfireAgent:
         """Initialize the agent — set up database."""
         await db.init_db()
         logger.info("🔥 OBOR Agent initialized")
+
+        # Sync initial Jev decision from JevSupervisor
+        self.last_jev_decision = self.jev.last_decision
+
+        # Preload initial predictions from ML model
+        try:
+            if self.predictor and self.predictor.is_ready:
+                self.last_predictions = self.predictor.get_top_at_risk_cells(limit=5)
+        except Exception as e:
+            logger.debug(f"Initial predictor preload: {e}")
+
+        # Preload initial analysis so dashboard is immediately populated
+        initial_fires = list(self.fetcher.current_fires.values())
+        if initial_fires:
+            snapshot = self.governance.evaluate(initial_fires, {"total_acres": sum((f.get("daily_acres", 0) or 0) for f in initial_fires)})
+            self.last_snapshot = snapshot
+            self.last_analysis = self._ai_analysis_rules(initial_fires, snapshot, {"total_acres": snapshot.total_acres})
 
         warnings = config.validate()
         for w in warnings:
@@ -388,14 +406,17 @@ class WildfireAgent:
                 f"Analyze the situation and return concise JSON."
             )
 
-            response = await self._openai.chat.completions.create(
-                model=config.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.2,
-                max_tokens=1500,
+            response = await asyncio.wait_for(
+                self._openai.chat.completions.create(
+                    model=config.OPENAI_MODEL,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=0.2,
+                    max_tokens=1500,
+                ),
+                timeout=15.0
             )
 
             content = response.choices[0].message.content or "{}"
@@ -424,7 +445,13 @@ class WildfireAgent:
                 analysis.get("assessment") or
                 "Severe wildfire emergency with multiple active clusters under monitoring."
             )
-            analysis["risk_assessment"] = raw_text
+            if isinstance(raw_text, dict):
+                primary = raw_text.get("primary_concern") or raw_text.get("concern") or raw_text.get("summary") or raw_text.get("assessment")
+                status = raw_text.get("overall_status") or raw_text.get("status") or "CRITICAL"
+                raw_text = f"[{status}] {primary}" if primary else json.dumps(raw_text)
+            elif isinstance(raw_text, list):
+                raw_text = " · ".join(str(item) for item in raw_text)
+            analysis["risk_assessment"] = str(raw_text)
 
             recs = analysis.get("system_recommendation") or analysis.get("recommendations") or analysis.get("recommendation") or analysis.get("action")
             if isinstance(recs, list):

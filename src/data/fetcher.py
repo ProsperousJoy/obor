@@ -164,7 +164,7 @@ class WildfireDataFetcher:
 
         # Enrich top active fire incidents with live DuckDB warehouse features (single connection)
         try:
-            conn = duckdb.connect(config.WAREHOUSE_DB_PATH, read_only=True)
+            conn = duckdb.connect(config.WAREHOUSE_DB_PATH)
             try:
                 for f in fires[:25]:
                     lat = f.get("latitude", 0.0)
@@ -428,7 +428,7 @@ class WildfireDataFetcher:
     def get_fire_weather(self, lat: float, lon: float) -> dict:
         """Query closest BMKG weather forecast from DuckDB warehouse."""
         try:
-            conn = duckdb.connect(config.WAREHOUSE_DB_PATH, read_only=True)
+            conn = duckdb.connect(config.WAREHOUSE_DB_PATH)
             try:
                 return self._query_weather(conn, lat, lon)
             finally:
@@ -439,7 +439,7 @@ class WildfireDataFetcher:
     def get_himawari_thermal(self, lat: float, lon: float) -> dict:
         """Query nearest Himawari-9 thermal grid observation from DuckDB."""
         try:
-            conn = duckdb.connect(config.WAREHOUSE_DB_PATH, read_only=True)
+            conn = duckdb.connect(config.WAREHOUSE_DB_PATH)
             try:
                 return self._query_himawari(conn, lat, lon)
             finally:

@@ -109,7 +109,7 @@ class TestWarehouseSync(unittest.TestCase):
         self.assertEqual(result["synced_records"]["fire_snapshots"], 1)
 
         # Verify DuckDB records
-        conn = duckdb.connect(self.duckdb_path, read_only=True)
+        conn = duckdb.connect(self.duckdb_path)
         gov_row = conn.execute("SELECT id, viability_index FROM fact_governance_snapshots").fetchone()
         self.assertIsNotNone(gov_row)
         self.assertEqual(gov_row[0], 1)

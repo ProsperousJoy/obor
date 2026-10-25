@@ -375,7 +375,7 @@ class WarehouseSyncBridge:
         if not Path(self.duckdb_path).exists():
             return {"status": "uninitialized", "checkpoints": []}
 
-        duck_conn = duckdb.connect(self.duckdb_path, read_only=True)
+        duck_conn = duckdb.connect(self.duckdb_path)
         try:
             tables = set(duck_conn.execute("SHOW TABLES").df()["name"].tolist())
             if "_sync_checkpoints" not in tables:

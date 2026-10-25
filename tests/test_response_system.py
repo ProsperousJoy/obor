@@ -106,7 +106,7 @@ class TestWarehouseResponseSystem(unittest.TestCase):
         self.assertIn("feedback_id", fb)
         self.assertGreaterEqual(fb["plan_success_score"], 0.0)
 
-        conn = duckdb.connect(db_path, read_only=True)
+        conn = duckdb.connect(db_path)
         try:
             fb_row = conn.execute(
                 f"SELECT feedback_id, plan_success_score, retraining_candidate FROM fact_incident_feedback WHERE incident_id = '{incident_id}'"

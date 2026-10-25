@@ -160,7 +160,12 @@ async def api_alerts():
 @app.get("/api/predictions")
 async def api_predictions():
     """Get latest AI predictions."""
-    return JSONResponse(content={"analysis": agent.last_analysis})
+    analysis = agent.last_analysis
+    if not analysis and agent.fetcher.current_fires:
+        fires = list(agent.fetcher.current_fires.values())
+        snapshot = agent.last_snapshot or agent.governance.evaluate(fires, {})
+        analysis = agent._ai_analysis_rules(fires, snapshot, {})
+    return JSONResponse(content={"analysis": analysis})
 
 
 @app.get("/api/actions")
@@ -208,7 +213,7 @@ async def api_warehouse_assets():
         {"asset_id": "AS-PLP-05", "name": "Kawasan Pemukiman & Lahan Pertanian Pulang Pisau", "type": "SETTLEMENT", "lat": -2.75, "lon": 114.25, "province": "Kalimantan Tengah", "is_peatland": True},
     ]
     try:
-        conn = duckdb.connect(config.WAREHOUSE_DB_PATH, read_only=True)
+        conn = duckdb.connect(config.WAREHOUSE_DB_PATH)
         try:
             df = conn.execute("""
                 SELECT asset_id, asset_name as name, asset_type as type, lat, lon, province, is_peatland

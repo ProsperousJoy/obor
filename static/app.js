@@ -335,12 +335,13 @@ const loadPredictionsHeatmap = async () => {
             const p = feat.properties;
             const riskPct = (p.calibrated_risk * 100).toFixed(1);
             
+            const tier = String(p.risk_tier || '').toUpperCase();
             let color = '#C99A3E'; // WASPADA
             let radius = 6;
-            if (p.risk_tier.includes('AWAS')) {
+            if (tier.includes('AWAS') || tier.includes('CRITICAL')) {
                 color = '#C4452F';
                 radius = 10;
-            } else if (p.risk_tier.includes('SIAGA')) {
+            } else if (tier.includes('SIAGA') || tier.includes('HIGH')) {
                 color = '#D9762B';
                 radius = 8;
             }
@@ -380,41 +381,47 @@ const loadPredictionsHeatmap = async () => {
     }
 };
 
+const renderPredictionTable = (cells) => {
+    if (!els.predictionTable) return;
+    if (!Array.isArray(cells) || cells.length === 0) {
+        els.predictionTable.innerHTML = '<tr><td colspan="8" class="table-empty">Tidak ada sel risiko tinggi yang terdeteksi saat ini.</td></tr>';
+        return;
+    }
+
+    els.predictionTable.innerHTML = cells.map(c => {
+        const riskPct = ((c.calibrated_risk || 0) * 100).toFixed(1);
+        const rawRiskPct = ((c.raw_risk || 0) * 100).toFixed(0);
+        const tier = String(c.risk_tier || 'NORMAL').toUpperCase();
+        let badgeClass = 'badge-waspada';
+        if (tier.includes('AWAS') || tier.includes('CRITICAL')) badgeClass = 'badge-awas';
+        else if (tier.includes('SIAGA') || tier.includes('HIGH')) badgeClass = 'badge-siaga';
+        else if (tier.includes('NORMAL') || tier.includes('LOW')) badgeClass = 'badge-normal';
+
+        const cleanEta = c.estimated_eta ? c.estimated_eta.replace(/⚡/g, '').trim() : '2-5 jam (13:00-16:30)';
+        const frp = typeof c.predicted_frp_mw === 'number' ? c.predicted_frp_mw.toFixed(1) : (c.predicted_frp_mw || '0.0');
+
+        return `
+            <tr>
+                <td><strong>${c.grid_id || '--'}</strong></td>
+                <td>${c.province || 'Kalimantan'}</td>
+                <td><strong>${riskPct}%</strong> <span style="font-size:10px;color:var(--muted);">(raw ${rawRiskPct}%)</span></td>
+                <td><span class="badge ${badgeClass}">${c.risk_tier || tier}</span></td>
+                <td><span style="color:var(--bone);font-weight:600;font-size:11px;">${cleanEta}</span></td>
+                <td><span style="color:var(--sev-siaga);font-weight:600;">${frp} MW</span></td>
+                <td>${c.consecutive_dry_days !== undefined ? c.consecutive_dry_days : 0} hari</td>
+                <td>${c.hotspot_count_prev_7d !== undefined ? c.hotspot_count_prev_7d : 0}</td>
+            </tr>
+        `;
+    }).join('');
+};
+
 const loadTopPredictionsTable = async () => {
     try {
         const resp = await fetch('/api/prediction/top-risk?limit=15');
         if (!resp.ok) return;
         const data = await resp.json();
         const cells = data.top_risk_cells || [];
-        if (!els.predictionTable) return;
-
-        if (cells.length === 0) {
-            els.predictionTable.innerHTML = '<tr><td colspan="8" class="table-empty">Tidak ada sel risiko tinggi yang terdeteksi saat ini.</td></tr>';
-            return;
-        }
-
-        els.predictionTable.innerHTML = cells.map(c => {
-            const riskPct = (c.calibrated_risk * 100).toFixed(1);
-            let badgeClass = 'badge-waspada';
-            if (c.risk_tier.includes('AWAS')) badgeClass = 'badge-awas';
-            else if (c.risk_tier.includes('SIAGA')) badgeClass = 'badge-siaga';
-            else if (c.risk_tier.includes('NORMAL')) badgeClass = 'badge-normal';
-
-            const cleanEta = c.estimated_eta ? c.estimated_eta.replace(/⚡/g, '').trim() : '2-5 jam (13:00-16:30)';
-
-            return `
-                <tr>
-                    <td><strong>${c.grid_id}</strong></td>
-                    <td>${c.province || 'Kalimantan'}</td>
-                    <td><strong>${riskPct}%</strong> <span style="font-size:10px;color:var(--muted);">(raw ${(c.raw_risk * 100).toFixed(0)}%)</span></td>
-                    <td><span class="badge ${badgeClass}">${c.risk_tier}</span></td>
-                    <td><span style="color:var(--bone);font-weight:600;font-size:11px;">${cleanEta}</span></td>
-                    <td><span style="color:var(--sev-siaga);font-weight:600;">${c.predicted_frp_mw} MW</span></td>
-                    <td>${c.consecutive_dry_days} hari</td>
-                    <td>${c.hotspot_count_prev_7d}</td>
-                </tr>
-            `;
-        }).join('');
+        renderPredictionTable(cells);
     } catch (e) {
         console.warn('Failed to load top predictions table:', e);
     }
@@ -618,8 +625,11 @@ const addFeedItem = (container, data, isDispatch = false, isInitial = false) => 
 const updatePredictions = (data) => {
     if (!data || !els.predictions) return;
 
-    const rawAssessment = (typeof data.analysis === 'string' ? data.analysis : null) || data.risk_assessment || data.overall_assessment || data.summary || data.assessment || 'Analisis risiko operasional sedang berjalan...';
-    const assessment = stripEmoji(rawAssessment);
+    let rawAssessment = (typeof data.analysis === 'string' ? data.analysis : null) || data.risk_assessment || data.overall_assessment || data.summary || data.assessment || 'Analisis risiko operasional sedang berjalan...';
+    if (typeof rawAssessment === 'object' && rawAssessment !== null) {
+        rawAssessment = rawAssessment.primary_concern || rawAssessment.summary || rawAssessment.assessment || JSON.stringify(rawAssessment);
+    }
+    const assessment = stripEmoji(String(rawAssessment));
     let urgency = data.urgency_score;
     if (urgency === undefined || urgency === null) {
         const lvl = String(data.status || data.risk_level || '').toUpperCase();
@@ -669,6 +679,13 @@ const updatePredictions = (data) => {
                     ${str}
                 </div>`;
             }).join('') + '</div>';
+    } else if (Array.isArray(data.key_findings) && data.key_findings.length > 0) {
+        fireDetails = '<div style="margin-top:0.75rem;"><div style="font-size:0.72rem;font-weight:600;color:var(--muted);margin-bottom:0.35rem;text-transform:uppercase;">KEY OPERATIONAL FINDINGS:</div>' +
+            data.key_findings.slice(0, 4).map(kf => `
+                <div style="margin-bottom:0.35rem;padding:0.4rem 0.55rem;background:var(--ground);border:1px solid var(--hairline);font-size:0.75rem;color:var(--bone);">
+                    &bull; ${stripEmoji(String(kf))}
+                </div>
+            `).join('') + '</div>';
     }
 
     let hotspotsHtml = '';
@@ -685,8 +702,11 @@ const updatePredictions = (data) => {
         `;
     }
 
-    const rawRec = data.system_recommendation || data.recommendation || '';
-    const recommendation = stripEmoji(rawRec);
+    let rawRec = data.system_recommendation || data.recommendation || '';
+    if (!rawRec && Array.isArray(data.recommended_actions) && data.recommended_actions.length > 0) {
+        rawRec = data.recommended_actions.join(' · ');
+    }
+    const recommendation = stripEmoji(typeof rawRec === 'string' ? rawRec : JSON.stringify(rawRec));
 
     els.predictions.innerHTML = `
         <div style="margin-bottom:0.6rem;display:flex;justify-content:space-between;align-items:center;">
@@ -706,18 +726,25 @@ const updatePredictions = (data) => {
 // ─── Jev AI Supervisor Panel ────────────────────────────────────────────────
 const updateJevPanel = (data) => {
     if (!data) return;
-    const d = data.last_decision || data;
-    if (!d || d.timestamp === undefined) return;
+    const d = data.last_decision || (data.timestamp !== undefined ? data : null);
 
     if (els.jevStatusBadge) {
-        if (d.error) {
+        if (data.enabled === false) {
+            els.jevStatusBadge.textContent = 'STANDBY';
+            els.jevStatusBadge.className = 'badge badge-normal';
+        } else if (d && d.error && d.error !== 'STANDBY') {
             els.jevStatusBadge.textContent = 'DEGRADED';
             els.jevStatusBadge.className = 'badge badge-critical';
+        } else if (d) {
+            els.jevStatusBadge.textContent = 'ACTIVE';
+            els.jevStatusBadge.className = 'badge badge-safe';
         } else {
             els.jevStatusBadge.textContent = 'ACTIVE';
             els.jevStatusBadge.className = 'badge badge-safe';
         }
     }
+
+    if (!d) return;
 
     const threatPct = Math.round((d.is_immediate_threat || 0) * 100);
     const dispatchPct = Math.round((d.requires_emergency_dispatch || 0) * 100);
@@ -815,6 +842,13 @@ const connectSSE = () => {
         eventSource.addEventListener('prediction', (e) => {
             const data = JSON.parse(e.data);
             updatePredictions(data);
+        });
+
+        eventSource.addEventListener('predictive_risk', (e) => {
+            const data = JSON.parse(e.data);
+            if (data.top_cells && Array.isArray(data.top_cells)) {
+                renderPredictionTable(data.top_cells);
+            }
         });
 
         eventSource.addEventListener('action', (e) => {

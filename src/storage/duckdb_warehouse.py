@@ -16,13 +16,13 @@ def get_warehouse_db_path() -> str:
 
 
 @contextmanager
-def get_warehouse_connection(read_only: bool = True) -> Generator[duckdb.DuckDBPyConnection, None, None]:
+def get_warehouse_connection(read_only: bool = False) -> Generator[duckdb.DuckDBPyConnection, None, None]:
     """
     Context manager providing a managed DuckDB connection.
-    Automatically handles commit and close.
+    Uses unified connection configuration to prevent concurrency mismatch errors.
     """
     db_path = get_warehouse_db_path()
-    conn = duckdb.connect(db_path, read_only=read_only)
+    conn = duckdb.connect(db_path, read_only=False)
     try:
         yield conn
         if not read_only:

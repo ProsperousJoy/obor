@@ -181,7 +181,7 @@ class EmergencyDispatcher:
         self.water_list = STRATEGIC_WATER_SOURCES
 
         try:
-            conn = duckdb.connect(config.WAREHOUSE_DB_PATH, read_only=True)
+            conn = duckdb.connect(config.WAREHOUSE_DB_PATH)
             try:
                 hq_df = conn.execute("""
                     SELECT hq_id, hq_name, agency, province, kabupaten, lat, lon, crew_available, radio_channel

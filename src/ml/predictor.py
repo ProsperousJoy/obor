@@ -35,6 +35,7 @@ class WildfirePredictor:
 
         self.clf_artifact = None
         self.reg_artifact = None
+        self._cached_cells: List[Dict[str, Any]] = []
         self._load_models()
 
     def _load_models(self):
@@ -103,54 +104,60 @@ class WildfirePredictor:
         the highest ignition probability locations in Kalimantan for early dispatch.
         """
         if not self.db_path.exists():
-            return []
+            return self._cached_cells[:limit] if self._cached_cells else []
 
-        con = duckdb.connect(str(self.db_path), read_only=True)
-        query = f"""
-            SELECT 
-                grid_id, centroid_lat, centroid_lon, province,
-                {', '.join(FEATURE_COLS)}
-            FROM vw_training_dataset
-            WHERE split = 'TEST' AND month IN (8, 9, 10)
-            ORDER BY hotspot_count_prev_7d DESC, consecutive_dry_days DESC
-            LIMIT 1000
-        """
         try:
-            df = con.execute(query).df()
-        finally:
-            con.close()
+            con = duckdb.connect(str(self.db_path))
+            try:
+                query = f"""
+                    SELECT 
+                        grid_id, centroid_lat, centroid_lon, province,
+                        {', '.join(FEATURE_COLS)}
+                    FROM vw_training_dataset
+                    WHERE split = 'TEST' AND month IN (8, 9, 10)
+                    ORDER BY hotspot_count_prev_7d DESC, consecutive_dry_days DESC
+                    LIMIT 1000
+                """
+                df = con.execute(query).df()
+            finally:
+                con.close()
 
-        if len(df) == 0:
-            return []
+            if len(df) == 0:
+                return self._cached_cells[:limit] if self._cached_cells else []
 
-        df["has_recent_fire_7d"] = df["has_recent_fire_7d"].astype(int)
-        scored_df = self.predict_features(df)
+            df["has_recent_fire_7d"] = df["has_recent_fire_7d"].astype(int)
+            scored_df = self.predict_features(df)
 
-        top_df = scored_df.sort_values(by="calibrated_risk_prob", ascending=False).head(limit)
+            top_df = scored_df.sort_values(by="calibrated_risk_prob", ascending=False).head(limit)
 
-        results = []
-        now_utc = datetime.now(timezone.utc)
-        for _, row in top_df.iterrows():
-            cal_risk = float(row["calibrated_risk_prob"])
-            dry_days = int(row.get("consecutive_dry_days", 0))
-            eta_info = estimate_ignition_eta(cal_risk, dry_days, now_utc)
-            results.append({
-                "grid_id": row["grid_id"],
-                "lat": float(row["centroid_lat"]),
-                "lon": float(row["centroid_lon"]),
-                "province": row.get("province", "Kalimantan"),
-                "raw_risk": float(row["raw_risk_prob"]),
-                "calibrated_risk": cal_risk,
-                "risk_tier": row["risk_tier"],
-                "predicted_frp_mw": float(row["predicted_intensity_frp_mw"]),
-                "consecutive_dry_days": dry_days,
-                "hotspot_count_prev_7d": int(row.get("hotspot_count_prev_7d", 0)),
-                "estimated_eta": eta_info["eta_display"],
-                "eta_hours_min": eta_info["eta_hours_min"],
-                "eta_hours_max": eta_info["eta_hours_max"],
-                "peak_window": eta_info["peak_window"],
-            })
-        return results
+            results = []
+            now_utc = datetime.now(timezone.utc)
+            for _, row in top_df.iterrows():
+                cal_risk = float(row["calibrated_risk_prob"])
+                dry_days = int(row.get("consecutive_dry_days", 0))
+                eta_info = estimate_ignition_eta(cal_risk, dry_days, now_utc)
+                results.append({
+                    "grid_id": row["grid_id"],
+                    "lat": float(row["centroid_lat"]),
+                    "lon": float(row["centroid_lon"]),
+                    "province": row.get("province", "Kalimantan"),
+                    "raw_risk": float(row["raw_risk_prob"]),
+                    "calibrated_risk": cal_risk,
+                    "risk_tier": row["risk_tier"],
+                    "predicted_frp_mw": float(row["predicted_intensity_frp_mw"]),
+                    "consecutive_dry_days": dry_days,
+                    "hotspot_count_prev_7d": int(row.get("hotspot_count_prev_7d", 0)),
+                    "estimated_eta": eta_info["eta_display"],
+                    "eta_hours_min": eta_info["eta_hours_min"],
+                    "eta_hours_max": eta_info["eta_hours_max"],
+                    "peak_window": eta_info["peak_window"],
+                })
+            if results:
+                self._cached_cells = results
+            return results
+        except Exception as e:
+            logger.warning(f"Error querying top at risk cells from DuckDB: {e}")
+            return self._cached_cells[:limit] if self._cached_cells else []
 
     def get_risk_heatmap_geojson(self, limit: int = 200) -> Dict[str, Any]:
         """Generate GeoJSON FeatureCollection of predicted high-risk grid cells for Leaflet."""
