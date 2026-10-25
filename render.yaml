@@ -1,0 +1,21 @@
+# Render Blueprint — OBOR backend (FastAPI daemon)
+# Deploy: push to GitHub → Render Dashboard → New → Blueprint → select repo
+# Free plan: sleeps after 15min idle (fix: UptimeRobot ping), 512MB RAM,
+# no persistent disk (baseline data ships inside the Docker image).
+
+services:
+  - type: web
+    name: obor-backend
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      - key: POLL_INTERVAL
+        value: "60"
+      # Set these in the Render dashboard after first deploy (keep secrets out of git):
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: JEV_API_KEY
+        sync: false

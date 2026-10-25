@@ -1,0 +1,29 @@
+# Netlify config — OBOR static dashboard + API proxy
+# The dashboard (static/) uses relative paths (/api/*, /stream),
+# so we proxy them to the backend. No code changes, no CORS needed.
+
+[build]
+  publish = "static"
+
+# ── Proxy all API calls to the OBOR backend ─────────────────────
+# TODO: replace with your Render backend URL after deploying it, e.g.
+#   https://obor-backend.onrender.com
+[[redirects]]
+  from = "/api/*"
+  to = "https://REPLACE-WITH-RENDER-URL/api/:splat"
+  status = 200
+  force = true
+
+# Live SSE updates (server-sent events)
+[[redirects]]
+  from = "/stream"
+  to = "https://REPLACE-WITH-RENDER-URL/stream"
+  status = 200
+  force = true
+
+# Health check (handy for uptime pings & debugging)
+[[redirects]]
+  from = "/health"
+  to = "https://REPLACE-WITH-RENDER-URL/health"
+  status = 200
+  force = true
