@@ -15,9 +15,18 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/zulganzs/obor.git"
+# Private backend repo (SSH + deploy key). Netlify's public fork is
+# intentionally separate and stays the dashboard source.
+REPO_URL="git@github.com:zulganzs/obooor.git"
 SERVICE_USER="${SUDO_USER:-$USER}"
-APP_DIR="$(getent passwd "$SERVICE_USER" | cut -d: -f6)/obor"
+SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# run from inside a clone → use that clone; standalone → fresh clone to ~/obor
+if git -C "$SCRIPT_DIR/.." rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+    APP_DIR="$SERVICE_HOME/obor"
+fi
 
 [ "$(id -u)" -eq 0 ] || { echo "ERROR: run with sudo: sudo bash setup.sh"; exit 1; }
 
@@ -45,6 +54,14 @@ esac
 
 # ── 2. Application code ──────────────────────────────────────────
 echo ">>> [2/6] fetching code"
+# github.com SSH via port 443 (common ISP port-22 blocks; harmless when unblocked)
+SSHCFG="$SERVICE_HOME/.ssh/config"
+sudo -u "$SERVICE_USER" mkdir -p "$SERVICE_HOME/.ssh"
+if ! sudo -u "$SERVICE_USER" grep -q "ssh.github.com" "$SSHCFG" 2>/dev/null; then
+    printf 'Host github.com\n  HostName ssh.github.com\n  Port 443\n  User git\n  StrictHostKeyChecking accept-new\n' >> "$SSHCFG"
+    chown "$SERVICE_USER" "$SSHCFG"
+    chmod 600 "$SSHCFG"
+fi
 if [ -d "$APP_DIR/.git" ]; then
     sudo -u "$SERVICE_USER" git -C "$APP_DIR" pull --ff-only || echo "  (git pull failed — continuing with existing code)"
 else
