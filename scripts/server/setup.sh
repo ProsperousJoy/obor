@@ -27,7 +27,9 @@ echo "=========================================================="
 
 # ── 1. System packages ──────────────────────────────────────────
 echo ">>> [1/6] apt packages"
-apt-get update -qq
+# tolerate partial repo failures (broken/third-party sources like cPanel's
+# don't provide anything we need; main Ubuntu repos are what matter)
+apt-get update -qq || echo "  (apt update warnings ignored — system packages unaffected)"
 apt-get install -y -qq python3 python3-venv git curl >/dev/null
 
 python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' || {
