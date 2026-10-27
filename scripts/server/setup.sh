@@ -21,9 +21,9 @@ REPO_URL="git@github.com:zulganzs/obooor.git"
 SERVICE_USER="${SUDO_USER:-$USER}"
 SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# run from inside a clone → use that clone; standalone → fresh clone to ~/obor
-if git -C "$SCRIPT_DIR/.." rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# repo root via git itself (depth-agnostic); standalone runs clone fresh to ~/obor
+if ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)"; then
+    APP_DIR="$ROOT"
 else
     APP_DIR="$SERVICE_HOME/obor"
 fi
