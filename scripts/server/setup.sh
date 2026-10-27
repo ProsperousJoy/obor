@@ -73,7 +73,17 @@ echo ">>> [3/6] python venv + ML dependencies (~200MB, may take a few minutes)"
 if [ ! -x "$APP_DIR/.venv/bin/pip" ]; then
     sudo -u "$SERVICE_USER" python3 -m venv "$APP_DIR/.venv"
 fi
-sudo -u "$SERVICE_USER" "$APP_DIR/.venv/bin/pip" install -q --disable-pip-version-check -r "$APP_DIR/requirements.txt"
+# Wheelhouse (wheels shipped over LAN from the Mac) makes this offline and
+# immune to the flaky route to files.pythonhosted.org; fallback = network
+# with long timeouts.
+WHEELHOUSE="$SERVICE_HOME/obor-wheelhouse/wheels"
+if [ -d "$WHEELHOUSE" ] && [ -n "$(ls -A "$WHEELHOUSE" 2>/dev/null)" ]; then
+    echo "  installing ML deps from local wheelhouse (offline)"
+    sudo -u "$SERVICE_USER" "$APP_DIR/.venv/bin/pip" install -q --disable-pip-version-check --no-index --find-links "$WHEELHOUSE" -r "$APP_DIR/requirements.txt"
+else
+    echo "  no wheelhouse found - installing from PyPI (long timeouts)"
+    sudo -u "$SERVICE_USER" "$APP_DIR/.venv/bin/pip" install -q --disable-pip-version-check --timeout 120 --retries 20 -r "$APP_DIR/requirements.txt"
+fi
 
 AVAILABLE_KB=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
 [ "$AVAILABLE_KB" -lt 900 ] && echo "  WARNING: only ${AVAILABLE_KB}MB RAM free — ML imports need ~700MB; app may OOM."
@@ -113,9 +123,14 @@ echo "  backend healthy on :8000"
 # ── 5. cloudflared ──────────────────────────────────────────────
 echo ">>> [5/6] cloudflared ($CF_ARCH)"
 if ! [ -x /usr/local/bin/cloudflared ]; then
-    curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}" \
-        -o /usr/local/bin/cloudflared
-    chmod +x /usr/local/bin/cloudflared
+    if [ -x "$SERVICE_HOME/obor-wheelhouse/cloudflared" ]; then
+        echo "  installing cloudflared from local wheelhouse (offline)"
+        install -m 755 "$SERVICE_HOME/obor-wheelhouse/cloudflared" /usr/local/bin/cloudflared
+    else
+        curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}" \
+            -o /usr/local/bin/cloudflared
+        chmod +x /usr/local/bin/cloudflared
+    fi
 fi
 
 # ── 6. Tunnel systemd service ────────────────────────────────────
