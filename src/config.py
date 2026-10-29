@@ -47,6 +47,12 @@ class Config:
     # Demo mode — when True, generates simulated fire data
     DEMO_MODE: bool = os.getenv("DEMO_MODE", "false").lower() in ("true", "1", "yes")
 
+    # Demo incident seed data — fetched from GitHub (any http(s) or file:// URL)
+    DEMO_INCIDENTS_URL: str = os.getenv(
+        "DEMO_INCIDENTS_URL",
+        "https://raw.githubusercontent.com/ProsperousJoy/obor/main/data/demo_incidents.json",
+    )
+
     # DuckDB Data Warehouse (Analytical OLAP Store)
     WAREHOUSE_DB_PATH: str = os.getenv(
         "WAREHOUSE_DB_PATH",

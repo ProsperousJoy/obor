@@ -8,6 +8,7 @@ import math
 import os
 import random
 import sqlite3
+from pathlib import Path
 import duckdb
 import httpx
 
@@ -115,7 +116,40 @@ class WildfireDataFetcher:
         self.current_fires: dict[str, dict] = {}
         self._demo_state: list[dict] = [f.copy() for f in BORNEO_DEMO_FIRES]
         self._fetch_count = 0
+        self._github_incidents: list[dict] | None = None
+        self._github_incidents_error: str | None = None
+        self._demo_seed_source: str = "embedded"
         self._preload_cached_fires()
+
+    def load_github_incidents(self) -> list[dict]:
+        """Fetch demo seed incidents from config.DEMO_INCIDENTS_URL (cached after first success)."""
+        if self._github_incidents is not None:
+            return self._github_incidents
+        url = config.DEMO_INCIDENTS_URL
+        try:
+            if url.startswith("file://"):
+                payload = Path(os.path.expanduser(url[len("file://"):])).read_text(encoding="utf-8")
+            elif url.startswith(("http://", "https://")):
+                resp = httpx.get(url, timeout=10.0, follow_redirects=True,
+                                 headers={"User-Agent": "OBOR-Borneo/1.0"})
+                resp.raise_for_status()
+                payload = resp.text
+            else:
+                raise ValueError(f"Unsupported DEMO_INCIDENTS_URL scheme: {url[:24]}")
+            data = json.loads(payload)
+            if not isinstance(data, list):
+                raise ValueError("Expected a JSON array of incident objects")
+            incidents = [f for f in data if isinstance(f, dict) and isinstance(f.get("fire_id"), str)]
+            if not incidents:
+                raise ValueError("No valid incidents in remote seed data")
+            self._github_incidents = incidents
+            self._github_incidents_error = None
+            logger.info(f"🌐 Loaded {len(incidents)} demo incidents from GitHub seed data ({url.split('?')[0]})")
+        except Exception as e:
+            self._github_incidents_error = str(e)
+            logger.warning(f"Failed to load demo incidents from GitHub ({url.split('?')[0]}): {e} — using embedded seed data")
+            self._github_incidents = []
+        return self._github_incidents
 
     def _preload_cached_fires(self):
         """Preload cached Borneo fire incidents from SQLite so /api/fires returns immediately on boot."""
@@ -183,6 +217,10 @@ class WildfireDataFetcher:
 
     def _fetch_demo(self) -> list[dict]:
         """Generate evolving Kalimantan wildfire data for demo/offline operation."""
+        remote = self.load_github_incidents()
+        if remote and self._demo_seed_source != "github":
+            self._demo_state = [dict(f, last_updated=datetime.now(timezone.utc).isoformat()) for f in remote]
+            self._demo_seed_source = "github"
         self._demo_state = [_evolve_demo_fire(f) for f in self._demo_state]
 
         if random.random() < 0.15 and len(self._demo_state) < 10:
